@@ -1,0 +1,216 @@
+/* ── MATRIX ANIMATION ─────────────────────────────────── */
+@keyframes matrixFade {
+  0% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ── SMOKE TRANSITION ─────────────────────────────────── */
+@keyframes smokeIn {
+  0% { opacity: 0; transform: scale(1.05); filter: blur(8px); }
+  100% { opacity: 1; transform: scale(1); filter: blur(0); }
+}
+
+@keyframes smokeOut {
+  0% { opacity: 1; transform: scale(1); filter: blur(0); }
+  100% { opacity: 0; transform: scale(0.95); filter: blur(8px); }
+}
+
+.smoke-in {
+  animation: smokeIn 0.8s ease forwards;
+}
+
+.smoke-out {
+  animation: smokeOut 0.5s ease forwards;
+}
+
+/* ── PARTICLE FIELD ───────────────────────────────────── */
+#particle-canvas {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.4;
+}
+
+/* ── CRYSTAL SMOKE ────────────────────────────────────── */
+.smoke-particle {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: smokeFloat linear infinite;
+}
+
+@keyframes smokeFloat {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(-200px) scale(2);
+    opacity: 0;
+  }
+}
+
+/* ── PAGE TRANSITIONS ─────────────────────────────────── */
+.page-enter {
+  animation: pageEnter 0.5s ease forwards;
+}
+
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+/* ── GLOW EFFECTS ─────────────────────────────────────── */
+.saffron-glow {
+  box-shadow: 0 0 20px rgba(255, 102, 0, 0.4);
+}
+
+.gold-glow {
+  box-shadow: 0 0 20px rgba(200, 150, 12, 0.4);
+}
+
+/* ── PULSE ANIMATION ──────────────────────────────────── */
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* ── FLOAT ANIMATION ──────────────────────────────────── */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.float {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* ── SHIMMER ──────────────────────────────────────────── */
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--smoke) 25%,
+    var(--smoke-2) 50%,
+    var(--smoke) 75%
+  );
+  background-size: 200% auto;
+  animation: shimmer 1.5s linear infinite;
+}
+
+/* ── SEND BUTTON PULSE ────────────────────────────────── */
+@keyframes sendPulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 102, 0, 0.4); }
+  70% { box-shadow: 0 0 0 8px rgba(255, 102, 0, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 102, 0, 0); }
+}
+
+.send-pulse {
+  animation: sendPulse 1.5s ease infinite;
+}
+
+/* ── STAR TWINKLE ─────────────────────────────────────── */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.3); }
+}
+
+/* ── NOTIFICATION BADGE ───────────────────────────────── */
+@keyframes badgePop {
+  0% { transform: scale(0); }
+  70% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.badge-pop {
+  animation: badgePop 0.3s ease forwards;
+}
+
+/* ── SIDEBAR COLLAPSE ─────────────────────────────────── */
+.sidebar-toggle-btn {
+  position: fixed;
+  top: calc(var(--navbar-height) + 12px);
+  left: calc(var(--sidebar-width) - 12px);
+  width: 24px;
+  height: 24px;
+  background: var(--smoke-2);
+  border: 1px solid var(--card-border);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 850;
+  font-size: 12px;
+  color: var(--grey);
+  transition: all 0.3s ease;
+}
+
+.sidebar-toggle-btn:hover {
+  color: var(--saffron);
+  border-color: var(--saffron);
+}
+
+.sidebar-toggle-btn.collapsed {
+  left: 12px;
+}
+
+/* ── WELCOME SUGGESTIONS ──────────────────────────────── */
+.suggestion-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+.suggestion-chip {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  color: var(--grey);
+  padding: 8px 16px;
+  border-radius: 50px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: 'Inter', sans-serif;
+}
+
+.suggestion-chip:hover {
+  border-color: var(--saffron);
+  color: var(--saffron);
+  background: rgba(255, 102, 0, 0.08);
+}
+
+/* ── OVERLAY BACKDROP ─────────────────────────────────── */
+.overlay-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(13, 0, 5, 0.7);
+  z-index: 1500;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
