@@ -3,6 +3,12 @@ import './styles/animations.css'
 import { renderMatrix, startMatrixBackground } from './pages/home.js'
 import { renderChat } from './pages/chat.js'
 import { renderAuth } from './pages/auth.js'
+import { renderAbout } from './pages/about.js'
+import { renderPricing } from './pages/pricing.js'
+import { renderTeam } from './pages/team.js'
+import { renderBusiness } from './pages/business.js'
+import { renderBlog } from './pages/blog.js'
+import { renderModels } from './pages/models.js'
 
 export const state = {
   user: null,
@@ -81,6 +87,24 @@ function render() {
       break
     case 'auth':
       renderAuth(app, state)
+      break
+    case 'about':
+      renderAbout(app, state)
+      break
+    case 'pricing':
+      renderPricing(app, state)
+      break
+    case 'team':
+      renderTeam(app, state)
+      break
+    case 'business':
+      renderBusiness(app, state)
+      break
+    case 'blog':
+      renderBlog(app, state)
+      break
+    case 'models':
+      renderModels(app, state)
       break
     default:
       renderChat(app, state)

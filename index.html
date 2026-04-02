@@ -14,15 +14,28 @@
     <!-- Styles -->
     <link rel="stylesheet" href="/src/styles/main.css" />
     <link rel="stylesheet" href="/src/styles/animations.css" />
+
+    <style>
+      @keyframes musicPulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+      }
+    </style>
   </head>
+
   <body>
 
-    <!-- Music Player (fixed, always visible) -->
+    <!-- Music Bar — Fixed Bottom -->
     <div id="music-bar">
       <span id="music-label">🎵 Vishnu Sahasranamam</span>
-      <input type="range" id="music-volume" min="0" max="100" value="20" />
-      <button id="music-toggle">⏸</button>
-      <audio id="bg-music" loop>
+      <span id="music-hint" style="
+        font-size:11px; color:#FF6600;
+        animation: musicPulse 1.5s ease-in-out infinite;
+        cursor:pointer; white-space:nowrap;
+      ">▶ Click to start music</span>
+      <input type="range" id="music-volume" min="0" max="100" value="20" style="cursor:pointer;" />
+      <button id="music-toggle">▶</button>
+      <audio id="bg-music" loop preload="auto">
         <source src="/src/assets/sounds/vishnu.mp3" type="audio/mpeg" />
       </audio>
     </div>
@@ -30,7 +43,73 @@
     <!-- App Root -->
     <div id="app"></div>
 
+    <!-- Music Controller -->
+    <script>
+      var audio = null;
+      var musicStarted = false;
+
+      window.addEventListener('load', function() {
+        audio = document.getElementById('bg-music');
+        var toggle = document.getElementById('music-toggle');
+        var volume = document.getElementById('music-volume');
+        var hint = document.getElementById('music-hint');
+
+        // Restore saved volume
+        var saved = localStorage.getItem('ba_music_vol');
+        if (saved) {
+          audio.volume = saved / 100;
+          volume.value = saved;
+        } else {
+          audio.volume = 0.20;
+        }
+
+        // Volume slider
+        volume.addEventListener('input', function() {
+          audio.volume = this.value / 100;
+          localStorage.setItem('ba_music_vol', this.value);
+        });
+
+        // Toggle button
+        toggle.addEventListener('click', function() {
+          if (audio.paused) {
+            audio.play();
+            toggle.textContent = '⏸';
+            if (hint) hint.style.display = 'none';
+            musicStarted = true;
+          } else {
+            audio.pause();
+            toggle.textContent = '▶';
+          }
+        });
+
+        // Hint click
+        if (hint) {
+          hint.addEventListener('click', function() {
+            startMusic();
+          });
+        }
+
+        // Start on any user interaction
+        function startMusic() {
+          if (!musicStarted && audio) {
+            audio.play().then(function() {
+              musicStarted = true;
+              toggle.textContent = '⏸';
+              if (hint) hint.style.display = 'none';
+            }).catch(function(e) {
+              console.log('Audio play failed:', e);
+            });
+          }
+        }
+
+        document.addEventListener('click', startMusic);
+        document.addEventListener('keydown', startMusic);
+        document.addEventListener('touchstart', startMusic);
+      });
+    </script>
+
     <!-- Main Script -->
     <script type="module" src="/src/main.js"></script>
+
   </body>
 </html>
