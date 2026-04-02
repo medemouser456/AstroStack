@@ -27,7 +27,7 @@ export function navigate(page) {
   state.currentPage = page
   render()
 }
-
+window.navigate = navigate 
 function setupMusic() {
   const audio = document.getElementById('bg-music')
   const toggle = document.getElementById('music-toggle')

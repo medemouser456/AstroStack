@@ -40,11 +40,11 @@ export function renderChat(app, state) {
     <nav class="navbar">
       <a class="navbar-logo" href="#">🔮 Blessed<span>Astro</span></a>
       <ul class="navbar-links">
-        <li><a href="#">About</a></li>
-        <li><a href="#">Pricing</a></li>
-        <li><a href="#">Business API</a></li>
-        <li><a href="#">Our Team</a></li>
-      </ul>
+  <li><a href="#" onclick="event.preventDefault();navigate('about')">About</a></li>
+  <li><a href="#" onclick="event.preventDefault();navigate('pricing')">Pricing</a></li>
+  <li><a href="#" onclick="event.preventDefault();navigate('business')">Business API</a></li>
+  <li><a href="#" onclick="event.preventDefault();navigate('team')">Our Team</a></li>
+</ul>
       <div class="navbar-right">
         <button class="lang-toggle" id="lang-btn">EN / हिं</button>
         ${state.user
