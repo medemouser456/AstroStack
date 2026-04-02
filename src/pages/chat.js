@@ -516,8 +516,7 @@ Keep responses to 3-5 sentences unless asked for more detail.
 ${state.language === 'hi' ? 'Respond in Hindi (Devanagari script).' : 'Respond in English.'}
 Never claim 100% certainty — frame insights as guidance and possibilities.
 Always relate answers to the specific domain: ${state.selectedDomain.desc}.`
-
-  try {
+try {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -527,7 +526,7 @@ Always relate answers to the specific domain: ${state.selectedDomain.desc}.`
         'X-Title': 'Blessed Astro'
       },
       body: JSON.stringify({
-        model: 'meta-llama/llama-4-scout:free',
+       model: 'openrouter/auto',
         messages: [
           { role: 'system', content: systemPrompt },
           ...state.currentChat.map(m => ({
@@ -541,13 +540,22 @@ Always relate answers to the specific domain: ${state.selectedDomain.desc}.`
     })
 
     const data = await response.json()
-    const aiText = data.choices?.[0]?.message?.content || 'I apologize, I could not connect to the cosmic realm. Please try again.'
+    console.log('API Response:', JSON.stringify(data))
+
+    if (!response.ok) {
+      throw new Error(`API Error ${response.status}: ${data.error?.message || JSON.stringify(data)}`)
+    }
+
+    if (!data.choices || data.choices.length === 0) {
+      throw new Error('No choices in response: ' + JSON.stringify(data))
+    }
+
+    const aiText = data.choices[0].message.content
 
     removeLoadingMessage(loadingId)
     state.currentChat.push({ role: 'ai', content: aiText })
     addMessageToUI('ai', aiText, state.selectedModel.icon, state.selectedModel.name + ' Advisor')
 
-    // Save to history
     if (state.currentChat.length === 2) {
       state.chatHistory.unshift({
         title: text.slice(0, 40) + (text.length > 40 ? '...' : ''),
@@ -559,7 +567,8 @@ Always relate answers to the specific domain: ${state.selectedDomain.desc}.`
 
   } catch (err) {
     removeLoadingMessage(loadingId)
-    addMessageToUI('ai', 'The cosmic connection was interrupted. Please check your connection and try again.', state.selectedModel.icon, state.selectedModel.name + ' Advisor')
+    console.error('Chat error full:', err.message)
+    addMessageToUI('ai', '⚠️ Debug: ' + err.message, state.selectedModel.icon, state.selectedModel.name + ' Advisor')
   }
 
   sendBtn.disabled = false
