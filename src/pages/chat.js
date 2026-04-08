@@ -507,15 +507,26 @@ async function sendChatMessage() {
     ? `User: ${state.user.name}${state.userDetails ? `, born ${state.userDetails.dob} in ${state.userDetails.birthPlace}, Gender: ${state.userDetails.gender}` : ''}.`
     : 'User details not provided yet.'
 
-  const systemPrompt = `You are an expert ${state.selectedModel.name} advisor with 30 years of experience.
-${userInfo}
-The user seeks guidance on: ${state.selectedDomain.name} (${state.selectedDomain.house}).
-Speak with warmth and wisdom like a trusted family astrologer.
-Give practical, actionable guidance — not vague predictions.
-Keep responses to 3-5 sentences unless asked for more detail.
-${state.language === 'hi' ? 'Respond in Hindi (Devanagari script).' : 'Respond in English.'}
-Never claim 100% certainty — frame insights as guidance and possibilities.
-Always relate answers to the specific domain: ${state.selectedDomain.desc}.`
+  // Get chart data for AI
+const { formatChartForAI } = await import('../astro/engine.js')
+const chartContext = state.birthChart
+  ? formatChartForAI(state.birthChart, state.selectedModel, state.selectedDomain, state.language)
+  : `User: ${state.userDetails?.name || 'Unknown'}, DOB: ${state.userDetails?.dob || 'Unknown'}, Place: ${state.userDetails?.birthPlace || 'Unknown'}`
+
+const systemPrompt = `You are an expert ${state.selectedModel.name} advisor with 30 years of experience.
+
+${chartContext}
+
+INSTRUCTIONS:
+- Analyze the birth chart data provided above
+- Focus specifically on ${state.selectedDomain.name} (${state.selectedDomain.house})
+- Give specific planetary references from the actual chart
+- Mention exact planets, houses, dashas from the data above
+- Give practical actionable guidance
+- Suggest remedies if afflictions are found
+- ${state.language === 'hi' ? 'Respond in Hindi (Devanagari script).' : 'Respond in English.'}
+- Speak warmly like a trusted family astrologer
+- End with one specific actionable advice`
 try {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -691,7 +702,7 @@ window.showCrystalBall = function() {
     document.getElementById('g-' + g.toLowerCase())?.classList.add('active')
   }
 
-  window.saveCrystalDetails = () => {
+  window.saveCrystalDetails = async () => {
     const name = document.getElementById('cd-name').value.trim()
     const dob = document.getElementById('cd-dob').value
     const place = document.getElementById('cd-place').value.trim()
@@ -701,14 +712,31 @@ window.showCrystalBall = function() {
       return
     }
 
-    state.userDetails = {
-      name,
-      gender: selectedGender,
-      dob,
-      tob: document.getElementById('cd-tob').value,
-      birthPlace: place,
-      currentCity: document.getElementById('cd-city').value.trim()
-    }
+    const userDetails = {
+  name,
+  gender: selectedGender,
+  dob,
+  tob: document.getElementById('cd-tob').value,
+  birthPlace: place,
+  currentCity: document.getElementById('cd-city').value.trim()
+}
+
+state.userDetails = userDetails
+
+// Calculate full chart
+const btn = document.querySelector('[onclick="saveCrystalDetails()"]')
+if (btn) btn.textContent = '⏳ Calculating your chart...'
+
+try {
+  const { calculateFullChart } = await import('../astro/engine.js')
+  const result = await calculateFullChart(userDetails)
+  if (result.success) {
+    state.birthChart = result.chart
+    console.log('Chart calculated:', result.chart.vedic.lagna.sign)
+  }
+} catch(e) {
+  console.error('Chart error:', e)
+}
 
     if (!state.user) {
       state.user = { name, plan: 'Free' }
