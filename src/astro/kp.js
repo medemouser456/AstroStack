@@ -1,130 +1,147 @@
-import { calculateVedicChart } from './vedic.js'
-import { AYANAMSHA, NAKSHATRAS, HOUSE_LORDS } from './engine.js'
-import swisseph as swe from 'swisseph'
+import swe from 'swisseph'
+import { NAKSHATRAS, HOUSE_LORDS, AYANAMSHA, normalizeAngle, getSign, getDegreeInSign } from './engine.js'
 
 // ── KP ASTROLOGY CALCULATOR ────────────────────────────
-// Krishnamurti Paddhati — Sub-lord theory
 
-// KP Sub-lord table — each nakshatra divided into 9 sub-lords
-// proportional to Vimshottari dasha years
 const DASHA_YEARS = {
-  Ketu: 7, Venus: 20, Sun: 6, Moon: 10, Mars: 7,
-  Rahu: 18, Jupiter: 16, Saturn: 19, Mercury: 17
+  Ketu:7, Venus:20, Sun:6, Moon:10, Mars:7,
+  Rahu:18, Jupiter:16, Saturn:19, Mercury:17
 }
 
-const TOTAL_YEARS = 120
-
-// Each nakshatra = 13°20' = 800'
-// Sub-divisions proportional to dasha years
-function getSubLordTable() {
-  const subLords = []
-  const nakshatraSequence = [
-    'Ketu', 'Venus', 'Sun', 'Moon', 'Mars',
-    'Rahu', 'Jupiter', 'Saturn', 'Mercury'
-  ]
-
-  NAKSHATRAS.forEach((nak, nakIndex) => {
-    const nakStart = nakIndex * (800 / 60) // in degrees
-    const lordIndex = nakIndex % 9
-    let subStart = nakStart
-    const nakSpan = 13.333333
-
-    for (let i = 0; i < 9; i++) {
-      const subIndex = (lordIndex + i) % 9
-      const subLord = nakshatraSequence[subIndex]
-      const subSpan = (DASHA_YEARS[subLord] / TOTAL_YEARS) * nakSpan
-      const subEnd = subStart + subSpan
-
-      subLords.push({
-        nakshatra: nak.name,
-        nakshatraLord: nak.lord,
-        subLord,
-        startDegree: subStart,
-        endDegree: subEnd,
-      })
-
-      subStart = subEnd
-    }
-  })
-
-  return subLords
-}
+const DASHA_SEQUENCE = [
+  'Ketu','Venus','Sun','Moon','Mars',
+  'Rahu','Jupiter','Saturn','Mercury'
+]
 
 function getSubLord(longitude) {
-  const subLordTable = getSubLordTable()
-  const normalizedLong = longitude % 360
-  const entry = subLordTable.find(sl =>
-    normalizedLong >= sl.startDegree && normalizedLong < sl.endDegree
-  )
-  return entry?.subLord || 'Unknown'
+  const norm = normalizeAngle(longitude)
+  const nakIndex = Math.min(Math.floor(norm / 13.333333), 26)
+  const nakStart = nakIndex * 13.333333
+  const nakSpan = 13.333333
+  const degInNak = norm - nakStart
+
+  // Find starting lord for this nakshatra
+  const startLordIndex = nakIndex % 9
+
+  let subStart = 0
+  for (let i = 0; i < 9; i++) {
+    const lordIndex = (startLordIndex + i) % 9
+    const lord = DASHA_SEQUENCE[lordIndex]
+    const subSpan = (DASHA_YEARS[lord] / 120) * nakSpan
+    const subEnd = subStart + subSpan
+    if (degInNak >= subStart && degInNak < subEnd) {
+      return lord
+    }
+    subStart = subEnd
+  }
+  return DASHA_SEQUENCE[startLordIndex]
+}
+
+function getSubSubLord(longitude) {
+  const norm = normalizeAngle(longitude)
+  const nakIndex = Math.min(Math.floor(norm / 13.333333), 26)
+  const nakStart = nakIndex * 13.333333
+  const nakSpan = 13.333333
+  const degInNak = norm - nakStart
+  const startLordIndex = nakIndex % 9
+
+  let subStart = 0
+  for (let i = 0; i < 9; i++) {
+    const lordIndex = (startLordIndex + i) % 9
+    const lord = DASHA_SEQUENCE[lordIndex]
+    const subSpan = (DASHA_YEARS[lord] / 120) * nakSpan
+    const subEnd = subStart + subSpan
+
+    if (degInNak >= subStart && degInNak < subEnd) {
+      // Now find sub-sub-lord within this sub
+      const degInSub = degInNak - subStart
+      let ssStart = 0
+      for (let j = 0; j < 9; j++) {
+        const ssLordIndex = (lordIndex + j) % 9
+        const ssLord = DASHA_SEQUENCE[ssLordIndex]
+        const ssSpan = (DASHA_YEARS[ssLord] / 120) * subSpan
+        const ssEnd = ssStart + ssSpan
+        if (degInSub >= ssStart && degInSub < ssEnd) {
+          return ssLord
+        }
+        ssStart = ssEnd
+      }
+      return lord
+    }
+    subStart = subEnd
+  }
+  return DASHA_SEQUENCE[startLordIndex]
 }
 
 export function calculateKP(jd, lat, lng) {
-  // KP uses its own ayanamsha (slightly different from Lahiri)
-  swe.swe_set_sid_mode(AYANAMSHA.KP, 0, 0)
+  try {
+    // KP Ayanamsha
+    swe.swe_set_sid_mode(AYANAMSHA.KP, 0, 0)
+    const kpAyanamsha = swe.swe_get_ayanamsa_ut(jd)
 
-  const kpAyanamsha = swe.swe_get_ayanamsa_ut(jd)
+    // Houses with Placidus
+    const housesData = swe.swe_houses(jd, lat, lng, 'P')
 
-  // Calculate houses with Placidus (KP standard)
-  const houses = swe.swe_houses(jd, lat, lng, 'P')
+    // Cuspal sub-lords for all 12 houses
+    const cuspalSubLords = {}
+    for (let i = 1; i <= 12; i++) {
+      const cuspRaw = (housesData.cusps ? housesData.cusps[i] : housesData.ascendant + (i-1)*30 || housesData.ascendant) - kpAyanamsha
+      const cuspLong = normalizeAngle(cuspRaw)
+      const sign = getSign(cuspLong)
+      const nakIndex = Math.min(Math.floor(cuspLong / 13.333333), 26)
+      const nak = NAKSHATRAS[nakIndex]
+      const subLord = getSubLord(cuspLong)
+      const subSubLord = getSubSubLord(cuspLong)
 
-  // Cuspal sub-lords for all 12 houses
-  const cuspalSubLords = {}
-  for (let i = 0; i < 12; i++) {
-    const cuspLongitude = houses.cusps[i + 1] - kpAyanamsha
-    const normalizedCusp = ((cuspLongitude % 360) + 360) % 360
-    const sign = Math.floor(normalizedCusp / 30)
-    const nakshatra = NAKSHATRAS[Math.floor(normalizedCusp / 13.333333)]
-    const subLord = getSubLord(normalizedCusp)
-
-    cuspalSubLords[i + 1] = {
-      sign: ['Aries','Taurus','Gemini','Cancer','Leo','Virgo',
-             'Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'][sign],
-      degree: normalizedCusp % 30,
-      nakshatra: nakshatra?.name,
-      nakshatraLord: nakshatra?.lord,
-      subLord,
-      signLord: HOUSE_LORDS[['Aries','Taurus','Gemini','Cancer','Leo','Virgo',
-        'Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'][sign]]
+      cuspalSubLords[i] = {
+        sign,
+        degree: getDegreeInSign(cuspLong).toFixed(2),
+        signLord: HOUSE_LORDS[sign],
+        nakshatraLord: nak?.lord || '',
+        subLord,
+        subSubLord,
+        nakshatra: nak?.name || '',
+      }
     }
-  }
 
-  // Ruling planets at this moment
-  const ascendant = houses.ascendant - kpAyanamsha
-  const normalizedAsc = ((ascendant % 360) + 360) % 360
-  const lagnaSign = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo',
-    'Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'][Math.floor(normalizedAsc / 30)]
-  const lagnaLord = HOUSE_LORDS[lagnaSign]
-  const lagnaNak = NAKSHATRAS[Math.floor(normalizedAsc / 13.333333)]
+    // Moon details for ruling planets
+    const moonResult = swe.swe_calc_ut(jd, 1, swe.SEFLG_SIDEREAL)
+    const moonLong = normalizeAngle(moonResult.longitude - kpAyanamsha)
+    const moonSign = getSign(moonLong)
+    const moonNakIndex = Math.min(Math.floor(moonLong / 13.333333), 26)
+    const moonNak = NAKSHATRAS[moonNakIndex]
+    const moonSubLord = getSubLord(moonLong)
 
-  // Moon details for KP
-  const moonResult = swe.swe_calc_ut(jd, 1, swe.SEFLG_SIDEREAL)
-  const moonLong = ((moonResult.longitude - kpAyanamsha) % 360 + 360) % 360
-  const moonSign = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo',
-    'Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'][Math.floor(moonLong / 30)]
-  const moonSignLord = HOUSE_LORDS[moonSign]
-  const moonNak = NAKSHATRAS[Math.floor(moonLong / 13.333333)]
-  const moonSubLord = getSubLord(moonLong)
+    // Lagna details
+    const ascRaw = housesData.ascendant - kpAyanamsha
+    const ascLong = normalizeAngle(ascRaw)
+    const lagnaSign = getSign(ascLong)
+    const lagnaNakIndex = Math.min(Math.floor(ascLong / 13.333333), 26)
+    const lagnaNak = NAKSHATRAS[lagnaNakIndex]
 
-  const rulingPlanets = [
-    { planet: lagnaLord, reason: 'Lagna Sign Lord' },
-    { planet: lagnaNak?.lord, reason: 'Lagna Star Lord' },
-    { planet: moonSignLord, reason: 'Moon Sign Lord' },
-    { planet: moonNak?.lord, reason: 'Moon Star Lord' },
-    { planet: moonSubLord, reason: 'Moon Sub Lord' },
-  ].filter(rp => rp.planet)
+    // Ruling planets
+    const rulingPlanets = [
+      { planet: HOUSE_LORDS[lagnaSign], reason: 'Lagna Sign Lord' },
+      { planet: lagnaNak?.lord, reason: 'Lagna Star Lord' },
+      { planet: HOUSE_LORDS[moonSign], reason: 'Moon Sign Lord' },
+      { planet: moonNak?.lord, reason: 'Moon Star Lord' },
+      { planet: moonSubLord, reason: 'Moon Sub Lord' },
+    ].filter(rp => rp.planet)
 
-  return {
-    cuspalSubLords,
-    rulingPlanets,
-    moonDetails: {
-      sign: moonSign,
-      signLord: moonSignLord,
-      nakshatra: moonNak?.name,
-      nakshatraLord: moonNak?.lord,
-      subLord: moonSubLord,
-    },
-    kpAyanamsha: kpAyanamsha.toFixed(4),
-    note: 'KP uses Placidus houses and KP Ayanamsha for precise sub-lord calculations'
+    return {
+      cuspalSubLords,
+      rulingPlanets,
+      moonDetails: {
+        sign: moonSign,
+        signLord: HOUSE_LORDS[moonSign],
+        nakshatra: moonNak?.name,
+        nakshatraLord: moonNak?.lord,
+        subLord: moonSubLord,
+      },
+      kpAyanamsha: kpAyanamsha.toFixed(4),
+    }
+  } catch(e) {
+    console.error('KP calculation error:', e)
+    return { cuspalSubLords:{}, rulingPlanets:[], error: e.message }
   }
 }
