@@ -18,7 +18,7 @@ export function calculateVedicChart(jd, lat, lng) {
 
   // Sun position for combustion check
   const sunRaw = swe.swe_calc_ut(jd, 0, swe.SEFLG_SIDEREAL)
-  const sunLongitude = normalizeAngle(sunRaw.longitude - ayanamsha)
+  const sunLongitude = normalizeAngle(sunRaw.longitude)  // Already sidereal with SEFLG_SIDEREAL flag
 
   const planetList = [
     { id:0, name:'Sun' },
@@ -35,7 +35,7 @@ export function calculateVedicChart(jd, lat, lng) {
 
   for (const planet of planetList) {
     const result = swe.swe_calc_ut(jd, planet.id, swe.SEFLG_SIDEREAL)
-    const longitude = normalizeAngle(result.longitude - ayanamsha)
+    const longitude = normalizeAngle(result.longitude)  // Already sidereal with SEFLG_SIDEREAL flag
     const sign = getSign(longitude)
     const degreeInSign = getDegreeInSign(longitude)
     const nakshatra = getNakshatra(longitude)

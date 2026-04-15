@@ -40,6 +40,13 @@ function formatDate(date) {
   return date.toISOString().split('T')[0]
 }
 
+function changeToTotalDegrees(sign, degreeInSign) {
+  const signs = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo',
+                 'Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces']
+  const signIndex = signs.indexOf(sign)
+  return (signIndex * 30) + degreeInSign
+}
+
 function calculateAntardashas(mahaLord, mahaYears, startDate) {
   const mahaIndex = DASHA_SEQUENCE.findIndex(d => d.planet === mahaLord)
   const antardashas = []
@@ -84,8 +91,20 @@ export function calculateDasha(moonData, dobStr) {
   const moonNakshatra = moonData?.nakshatra?.name || 'Ashwini'
   const dashaLord = NAKSHATRA_LORDS[moonNakshatra] || 'Ketu'
   const nakshatraSpan = 13.333333
-  const degreeInNakshatra = moonData?.nakshatra?.degreeInNak || 0
+  
+  // Ensure degreeInNakshatra is properly extracted from nakshatra object
+  let degreeInNakshatra = 0
+  if (moonData?.nakshatra?.degreeInNak !== undefined) {
+    degreeInNakshatra = moonData.nakshatra.degreeInNak
+  } else if (moonData?.degree !== undefined) {
+    // Fallback: calculate from degree in sign
+    const degreeInZodiac = changeToTotalDegrees(moonData.sign, moonData.degree)
+    const nakshatraIndex = Math.floor(degreeInZodiac / nakshatraSpan)
+    degreeInNakshatra = degreeInZodiac - (nakshatraIndex * nakshatraSpan)
+  }
+  
   const dashaYears = DASHA_SEQUENCE.find(d => d.planet === dashaLord).years
+  // Balance: remaining portion of the starting dasha nakshatra
   const balance = ((nakshatraSpan - degreeInNakshatra) / nakshatraSpan) * dashaYears
 
   const dob = new Date(dobStr)
@@ -93,19 +112,19 @@ export function calculateDasha(moonData, dobStr) {
   let startIndex = DASHA_SEQUENCE.findIndex(d => d.planet === dashaLord)
   let currentDate = new Date(dob)
 
-  // First dasha with balance
+  // First dasha with balance (partial period)
   const firstEnd = addYears(currentDate, balance)
   const firstAntars = calculateAntardashas(dashaLord, balance, currentDate)
   timeline.push({
     planet: dashaLord,
     start: formatDate(currentDate),
     end: formatDate(firstEnd),
-    years: balance,
+    years: parseFloat(balance.toFixed(4)),
     antardashas: firstAntars
   })
   currentDate = firstEnd
 
-  // Remaining 8 full dashas
+  // Remaining 8 full dashas (cycling through sequence)
   for (let i = 1; i < 9; i++) {
     const index = (startIndex + i) % 9
     const dasha = DASHA_SEQUENCE[index]
@@ -124,17 +143,21 @@ export function calculateDasha(moonData, dobStr) {
   // Find current periods
   const today = new Date()
 
-  const currentMaha = timeline.find(d =>
-    new Date(d.start) <= today && new Date(d.end) >= today
-  )
+  const currentMaha = timeline.find(d => {
+    const startDate = new Date(d.start)
+    const endDate = new Date(d.end)
+    return startDate <= today && endDate >= today
+  })
 
   let currentAntar = null
   let currentPratyantar = null
 
   if (currentMaha?.antardashas) {
-    currentAntar = currentMaha.antardashas.find(a =>
-      new Date(a.start) <= today && new Date(a.end) >= today
-    )
+    currentAntar = currentMaha.antardashas.find(a => {
+      const startDate = new Date(a.start)
+      const endDate = new Date(a.end)
+      return startDate <= today && endDate >= today
+    })
     if (currentAntar) {
       const pratyantars = calculatePratyantardashas(
         currentMaha.planet,
@@ -142,31 +165,49 @@ export function calculateDasha(moonData, dobStr) {
         currentAntar.years,
         new Date(currentAntar.start)
       )
-      currentPratyantar = pratyantars.find(p =>
-        new Date(p.start) <= today && new Date(p.end) >= today
-      )
+      currentPratyantar = pratyantars.find(p => {
+        const startDate = new Date(p.start)
+        const endDate = new Date(p.end)
+        return startDate <= today && endDate >= today
+      })
     }
+  }
+
+  // Debug info
+  const debugInfo = {
+    moonNakshatra,
+    dashaLord,
+    degreeInNakshatra: degreeInNakshatra.toFixed(2),
+    balance: balance.toFixed(4),
+    birthDate: formatDate(dob),
+    todayDate: formatDate(today),
+    timelineCount: timeline.length
   }
 
   return {
     moonNakshatra,
     dashaLord,
-    balance: balance.toFixed(2),
+    balance: balance.toFixed(4),
+    degreeInNakshatra: degreeInNakshatra.toFixed(2),
     timeline,
+    debugInfo,
     mahadasha: currentMaha ? {
       planet: currentMaha.planet,
       start: currentMaha.start,
-      end: currentMaha.end
+      end: currentMaha.end,
+      years: currentMaha.years
     } : null,
     antardasha: currentAntar ? {
       planet: currentAntar.planet,
       start: currentAntar.start,
-      end: currentAntar.end
+      end: currentAntar.end,
+      years: currentAntar.years
     } : null,
     pratyantardasha: currentPratyantar ? {
       planet: currentPratyantar.planet,
       start: currentPratyantar.start,
-      end: currentPratyantar.end
+      end: currentPratyantar.end,
+      years: currentPratyantar.years
     } : null
   }
 }
