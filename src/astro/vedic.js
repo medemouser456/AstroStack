@@ -79,17 +79,20 @@ export function calculateVedicChart(jd, lat, lng) {
   }
 
   // 12 houses (equal house from lagna)
-  const houseData = {}
-  for (let i = 0; i < 12; i++) {
-    const houseLong = normalizeAngle(lagnaLongitude + i * 30)
-    const houseSign = getSign(houseLong)
-    houseData[i + 1] = {
-      sign: houseSign,
-      degree: getDegreeInSign(houseLong),
-      lord: HOUSE_LORDS[houseSign],
-      longitude: houseLong
-    }
+ // 12 equal houses from lagna
+const houseData = {}
+for (let i = 0; i < 12; i++) {
+  // Each house starts exactly 30° from previous
+  // House 1 starts at lagna longitude
+  const houseCuspLong = normalizeAngle(lagnaLongitude + (i * 30))
+  const houseSign = getSign(houseCuspLong)
+  houseData[i + 1] = {
+    sign: houseSign,
+    degree: getDegreeInSign(houseCuspLong),
+    lord: HOUSE_LORDS[houseSign],
+    longitude: houseCuspLong
   }
+}
 
   return {
     lagna: {
@@ -107,5 +110,6 @@ export function calculateVedicChart(jd, lat, lng) {
 
 function getHouseNumber(planetLongitude, lagnaLongitude) {
   const diff = normalizeAngle(planetLongitude - lagnaLongitude)
-  return Math.floor(diff / 30) + 1
+  const house = diff === 0 ? 1 : Math.ceil(diff / 30)
+  return house > 12 ? house - 12 : house
 }

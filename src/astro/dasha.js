@@ -23,18 +23,20 @@ const NAKSHATRA_LORDS = {
   'Shravana':'Moon','Dhanishtha':'Mars','Shatabhisha':'Rahu',
   'Purva Bhadra':'Jupiter','Uttara Bhadra':'Saturn','Revati':'Mercury',
 }
-
 function addDays(date, days) {
   const d = new Date(date)
+  if (isNaN(d.getTime())) return new Date()
   d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000)
   return d
 }
 
 function addYears(date, years) {
+  if (!years || isNaN(years)) return new Date(date)
   return addDays(date, years * 365.25)
 }
 
 function formatDate(date) {
+  if (!date || isNaN(date.getTime())) return 'Unknown'
   return date.toISOString().split('T')[0]
 }
 

@@ -30,21 +30,76 @@ const domains = [
   { icon: '☮️', name: 'Foreign & Moksha', house: '12th House', desc: 'Foreign travel, spirituality, liberation' },
 ]
 
+// ── FORMAT CHART FOR AI (inline — no import needed) ────
+function formatChartForAI(chart, model, domain, language) {
+  if (!chart || !chart.vedic) return null
+
+  const v = chart.vedic
+  const d = chart.dasha
+
+  const planetLines = Object.entries(v.planets).map(([_, p]) => {
+    const retro = p.isRetrograde ? ' (R)' : ''
+    const combust = p.isCombust ? ' (Combust)' : ''
+    return `  ${p.name}: ${p.sign} House ${p.house} | ${p.degree.toFixed(1)}° | ${p.nakshatra?.name || ''} Pada ${p.nakshatra?.pada || ''} | ${p.strength}${retro}${combust}`
+  }).join('\n')
+
+  const houseLines = Object.entries(v.houses).map(([num, h]) =>
+    `  House ${num}: ${h.sign} (Lord: ${h.lord})`
+  ).join('\n')
+
+  const yogaList = chart.yogas?.positive?.map(y => `  + ${y.name}: ${y.description}`).join('\n') || '  None detected'
+  const doshaList = chart.yogas?.doshas?.map(d => `  ! ${d.name}: ${d.description}`).join('\n') || '  None detected'
+
+  return `
+═══════════════════════════════════════
+BIRTH CHART (Swiss Ephemeris Calculated)
+═══════════════════════════════════════
+Name   : ${chart.name}
+DOB    : ${chart.dob}
+TOB    : ${chart.tob || 'Unknown'}
+Place  : ${chart.birthPlace}
+Gender : ${chart.gender}
+
+LAGNA: ${v.lagna.sign} ${v.lagna.degree.toFixed(2)}° | ${v.lagna.nakshatra?.name} Pada ${v.lagna.nakshatra?.pada} | Lord: ${v.lagna.lord}
+
+PLANETS:
+${planetLines}
+
+HOUSES:
+${houseLines}
+
+DASHA:
+  Mahadasha     : ${d?.mahadasha?.planet} (${d?.mahadasha?.start} to ${d?.mahadasha?.end})
+  Antardasha    : ${d?.antardasha?.planet} (${d?.antardasha?.start} to ${d?.antardasha?.end})
+  Pratyantardasha: ${d?.pratyantardasha?.planet || 'Calculating'}
+
+YOGAS: ${yogaList}
+DOSHAS: ${doshaList}
+
+NUMEROLOGY:
+  Life Path: ${chart.numerology?.lifePath} | Personal Year: ${chart.numerology?.personalYear}
+  Meaning: ${chart.numerology?.lifePathMeaning || ''}
+
+CHINESE: ${chart.chinese?.animalSign} (${chart.chinese?.element}) | 2026: ${chart.chinese?.currentYearImpact}
+
+QUERY: ${domain?.name} (${domain?.house}) | MODEL: ${model?.name}
+═══════════════════════════════════════`
+}
+
 // ── MAIN RENDER ────────────────────────────────────────
 export function renderChat(app, state) {
   app.innerHTML = `
     <div class="cosmic-bg"></div>
     <canvas id="particle-canvas"></canvas>
 
-    <!-- Navbar -->
     <nav class="navbar">
       <a class="navbar-logo" href="#">🔮 Blessed<span>Astro</span></a>
       <ul class="navbar-links">
-  <li><a href="#" onclick="event.preventDefault();navigate('about')">About</a></li>
-  <li><a href="#" onclick="event.preventDefault();navigate('pricing')">Pricing</a></li>
-  <li><a href="#" onclick="event.preventDefault();navigate('business')">Business API</a></li>
-  <li><a href="#" onclick="event.preventDefault();navigate('team')">Our Team</a></li>
-</ul>
+        <li><a href="#" onclick="event.preventDefault();navigate('about')">About</a></li>
+        <li><a href="#" onclick="event.preventDefault();navigate('pricing')">Pricing</a></li>
+        <li><a href="#" onclick="event.preventDefault();navigate('business')">Business API</a></li>
+        <li><a href="#" onclick="event.preventDefault();navigate('team')">Our Team</a></li>
+      </ul>
       <div class="navbar-right">
         <button class="lang-toggle" id="lang-btn">EN / हिं</button>
         ${state.user
@@ -54,15 +109,11 @@ export function renderChat(app, state) {
       </div>
     </nav>
 
-    <!-- Sidebar Toggle -->
     <button class="sidebar-toggle-btn" id="sidebar-toggle" onclick="toggleSidebar()">◀</button>
 
-    <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
       <div class="sidebar-header">
-        <button class="new-chat-btn" onclick="startNewChat()">
-          ✦ New Chat
-        </button>
+        <button class="new-chat-btn" onclick="startNewChat()">✦ New Chat</button>
       </div>
 
       ${state.user ? `
@@ -92,18 +143,10 @@ export function renderChat(app, state) {
 
       <div class="sidebar-section">
         <div class="sidebar-section-title">Services</div>
-        <button class="sidebar-item">
-          <span class="sidebar-item-icon">📅</span> Personal Calendar
-        </button>
-        <button class="sidebar-item">
-          <span class="sidebar-item-icon">📋</span> Life Reports
-        </button>
-        <button class="sidebar-item">
-          <span class="sidebar-item-icon">🧑‍💼</span> Book Astrologer
-        </button>
-        <button class="sidebar-item">
-          <span class="sidebar-item-icon">💬</span> Counselling
-        </button>
+        <button class="sidebar-item"><span class="sidebar-item-icon">📅</span> Personal Calendar</button>
+        <button class="sidebar-item"><span class="sidebar-item-icon">📋</span> Life Reports</button>
+        <button class="sidebar-item"><span class="sidebar-item-icon">🧑‍💼</span> Book Astrologer</button>
+        <button class="sidebar-item"><span class="sidebar-item-icon">💬</span> Counselling</button>
       </div>
 
       <div class="sidebar-bottom">
@@ -111,29 +154,19 @@ export function renderChat(app, state) {
           <span class="sidebar-item-icon">⚙️</span> Settings
         </button>
         ${state.user
-          ? `<button class="sidebar-item" onclick="handleLogout()">
-              <span class="sidebar-item-icon">🚪</span> Logout
-             </button>`
-          : `<button class="sidebar-item" onclick="goToAuth()">
-              <span class="sidebar-item-icon">🔑</span> Login / Sign Up
-             </button>`
+          ? `<button class="sidebar-item" onclick="handleLogout()"><span class="sidebar-item-icon">🚪</span> Logout</button>`
+          : `<button class="sidebar-item" onclick="goToAuth()"><span class="sidebar-item-icon">🔑</span> Login / Sign Up</button>`
         }
       </div>
     </div>
 
-    <!-- Main Chat Area -->
     <div class="chat-layout">
       <div class="chat-main" id="chat-main">
-
-        <!-- Messages or Welcome -->
         <div class="chat-messages" id="chat-messages">
           ${state.currentChat.length === 0 ? renderWelcome() : renderMessages()}
         </div>
 
-        <!-- Chat Input Bar -->
         <div class="chat-input-area">
-
-          <!-- Selectors Row -->
           <div class="chat-input-selectors" style="position:relative;">
             <div style="position:relative;">
               <button class="selector-btn" id="model-btn" onclick="toggleModelDropdown()">
@@ -176,7 +209,6 @@ export function renderChat(app, state) {
             </button>
           </div>
 
-          <!-- Input Box -->
           <div class="chat-input-box">
             <textarea
               id="chat-textarea"
@@ -196,36 +228,18 @@ export function renderChat(app, state) {
             Blessed Astro provides cosmic guidance for self-reflection. Not a substitute for professional advice.
           </div>
         </div>
-
       </div>
     </div>
 
-    <!-- Mobile Bottom Bar -->
     <div class="bottom-bar" id="bottom-bar">
-      <button class="bottom-bar-item active">
-        <span class="icon">💬</span>
-        <span>Chat</span>
-      </button>
-      <button class="bottom-bar-item" onclick="startNewChat()">
-        <span class="icon">✦</span>
-        <span>New</span>
-      </button>
-      <button class="bottom-bar-item">
-        <span class="icon">📅</span>
-        <span>Calendar</span>
-      </button>
-      <button class="bottom-bar-item">
-        <span class="icon">👤</span>
-        <span>Profile</span>
-      </button>
-      <button class="bottom-bar-item" onclick="toggleSidebar()">
-        <span class="icon">☰</span>
-        <span>Menu</span>
-      </button>
+      <button class="bottom-bar-item active"><span class="icon">💬</span><span>Chat</span></button>
+      <button class="bottom-bar-item" onclick="startNewChat()"><span class="icon">✦</span><span>New</span></button>
+      <button class="bottom-bar-item"><span class="icon">📅</span><span>Calendar</span></button>
+      <button class="bottom-bar-item"><span class="icon">👤</span><span>Profile</span></button>
+      <button class="bottom-bar-item" onclick="toggleSidebar()"><span class="icon">☰</span><span>Menu</span></button>
     </div>
   `
 
-  // Initialize everything
   initParticles()
   initChatHandlers(state)
   checkUserDetails(state)
@@ -236,15 +250,9 @@ function renderWelcome() {
   return `
     <div class="chat-welcome page-enter">
       <div class="chat-welcome-logo float">🔮</div>
-      <div style="font-family:'Cormorant Garamond',serif; font-size:36px; font-weight:700; color:var(--cream);">
-        Blessed Astro
-      </div>
-      <div class="chat-welcome-tagline">
-        "Indian Vedic Wisdom for all Life Decisions"
-      </div>
-      <div class="chat-welcome-hint">
-        Select your astrology model and domain below, then ask your question
-      </div>
+      <div style="font-family:'Cormorant Garamond',serif; font-size:36px; font-weight:700; color:var(--cream);">Blessed Astro</div>
+      <div class="chat-welcome-tagline">"Indian Vedic Wisdom for all Life Decisions"</div>
+      <div class="chat-welcome-hint">Select your astrology model and domain below, then ask your question</div>
       <div class="suggestion-chips">
         <div class="suggestion-chip" onclick="fillSuggestion('What does my birth chart say about my career?')">💼 Career guidance</div>
         <div class="suggestion-chip" onclick="fillSuggestion('When is the best time for me to get married?')">💑 Marriage timing</div>
@@ -257,22 +265,15 @@ function renderWelcome() {
   `
 }
 
-// ── RENDER MESSAGES ────────────────────────────────────
 function renderMessages() {
   return state.currentChat.map(msg => `
     <div class="message ${msg.role}">
-      ${msg.role === 'ai'
-        ? `<div class="msg-avatar">${state.selectedModel.icon}</div>`
-        : ''
-      }
+      ${msg.role === 'ai' ? `<div class="msg-avatar">${state.selectedModel.icon}</div>` : ''}
       <div class="msg-content">
         <div class="msg-name">${msg.role === 'ai' ? state.selectedModel.name + ' Advisor' : 'You'}</div>
         <div class="msg-bubble">${msg.content}</div>
       </div>
-      ${msg.role === 'user'
-        ? `<div class="msg-avatar">👤</div>`
-        : ''
-      }
+      ${msg.role === 'user' ? `<div class="msg-avatar">👤</div>` : ''}
     </div>
   `).join('')
 }
@@ -282,7 +283,6 @@ function initParticles() {
   const canvas = document.getElementById('particle-canvas')
   if (!canvas) return
   const ctx = canvas.getContext('2d')
-
   canvas.width = window.innerWidth
   canvas.height = window.innerHeight
 
@@ -308,41 +308,29 @@ function initParticles() {
 
   function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-    // Draw star particles
     particles.forEach(p => {
-      p.x += p.dx
-      p.y += p.dy
-      p.twinkle += 0.02
-
+      p.x += p.dx; p.y += p.dy; p.twinkle += 0.02
       if (p.x < 0) p.x = canvas.width
       if (p.x > canvas.width) p.x = 0
       if (p.y < 0) p.y = canvas.height
       if (p.y > canvas.height) p.y = 0
-
       const opacity = p.opacity * (0.7 + 0.3 * Math.sin(p.twinkle))
       ctx.beginPath()
       ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
       ctx.fillStyle = `rgba(255, 140, 64, ${opacity})`
       ctx.fill()
     })
-
-    // Draw floating symbols
     floaters.forEach(f => {
       f.y += f.speed
       if (f.y > canvas.height) f.y = -30
       if (f.y < -30) f.y = canvas.height
-
       ctx.font = `${f.size}px serif`
       ctx.fillStyle = `rgba(200, 150, 12, ${f.opacity})`
       ctx.fillText(f.symbol, f.x, f.y)
     })
-
     requestAnimationFrame(animate)
   }
-
   animate()
-
   window.addEventListener('resize', () => {
     canvas.width = window.innerWidth
     canvas.height = window.innerHeight
@@ -351,13 +339,10 @@ function initParticles() {
 
 // ── CHAT HANDLERS ──────────────────────────────────────
 function initChatHandlers(state) {
-
-  // Sidebar toggle
   window.toggleSidebar = () => {
     const sidebar = document.getElementById('sidebar')
     const chatMain = document.getElementById('chat-main')
     const toggleBtn = document.getElementById('sidebar-toggle')
-
     sidebar.classList.toggle('collapsed')
     const isCollapsed = sidebar.classList.contains('collapsed')
     chatMain.style.marginLeft = isCollapsed ? '0' : 'var(--sidebar-width)'
@@ -365,19 +350,16 @@ function initChatHandlers(state) {
     toggleBtn.style.left = isCollapsed ? '12px' : 'calc(var(--sidebar-width) - 12px)'
   }
 
-  // Model dropdown
   window.toggleModelDropdown = () => {
     document.getElementById('model-dropdown').classList.toggle('open')
     document.getElementById('domain-dropdown').classList.remove('open')
   }
 
-  // Domain dropdown
   window.toggleDomainDropdown = () => {
     document.getElementById('domain-dropdown').classList.toggle('open')
     document.getElementById('model-dropdown').classList.remove('open')
   }
 
-  // Close dropdowns on outside click
   document.addEventListener('click', (e) => {
     if (!e.target.closest('#model-btn') && !e.target.closest('#model-dropdown')) {
       document.getElementById('model-dropdown')?.classList.remove('open')
@@ -387,30 +369,25 @@ function initChatHandlers(state) {
     }
   })
 
-  // Select model
   window.selectModel = (name) => {
     const model = models.find(m => m.name === name)
     if (model) {
       state.selectedModel = model
-      document.getElementById('model-btn').innerHTML =
-        `${model.icon} ${model.name} <span class="arrow">▾</span>`
+      document.getElementById('model-btn').innerHTML = `${model.icon} ${model.name} <span class="arrow">▾</span>`
       document.getElementById('model-dropdown').classList.remove('open')
       document.querySelectorAll('#model-dropdown .dropdown-item').forEach(el => {
         el.classList.toggle('selected', el.querySelector('.dropdown-item-name').textContent === name)
       })
-      // Update placeholder
       const ta = document.getElementById('chat-textarea')
       if (ta) ta.placeholder = `Ask ${model.name} about ${state.selectedDomain.name}...`
     }
   }
 
-  // Select domain
   window.selectDomain = (name) => {
     const domain = domains.find(d => d.name === name)
     if (domain) {
       state.selectedDomain = domain
-      document.getElementById('domain-btn').innerHTML =
-        `${domain.icon} ${domain.name} <span class="arrow">▾</span>`
+      document.getElementById('domain-btn').innerHTML = `${domain.icon} ${domain.name} <span class="arrow">▾</span>`
       document.getElementById('domain-dropdown').classList.remove('open')
       document.querySelectorAll('#domain-dropdown .dropdown-item').forEach(el => {
         el.classList.toggle('selected', el.querySelector('.dropdown-item-name').textContent === name)
@@ -420,20 +397,17 @@ function initChatHandlers(state) {
     }
   }
 
-  // Language toggle
   window.toggleLanguage = () => {
     state.language = state.language === 'en' ? 'hi' : 'en'
     const btn = document.getElementById('lang-toggle-btn')
     if (btn) btn.textContent = state.language === 'en' ? '🇬🇧 EN' : '🇮🇳 हिं'
   }
 
-  // Auto resize textarea
   window.autoResize = (el) => {
     el.style.height = 'auto'
     el.style.height = Math.min(el.scrollHeight, 120) + 'px'
   }
 
-  // Enter key
   window.handleChatKey = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -441,40 +415,24 @@ function initChatHandlers(state) {
     }
   }
 
-  // Fill suggestion
   window.fillSuggestion = (text) => {
     const ta = document.getElementById('chat-textarea')
-    if (ta) {
-      ta.value = text
-      ta.focus()
-      autoResize(ta)
-    }
+    if (ta) { ta.value = text; ta.focus(); autoResize(ta) }
   }
 
-  // New chat
   window.startNewChat = () => {
-    if (!state.user) {
-      showCrystalBall()
-      return
-    }
+    if (!state.user) { showCrystalBall(); return }
     state.currentChat = []
     const messages = document.getElementById('chat-messages')
     if (messages) messages.innerHTML = renderWelcome()
   }
 
-  // Navigation
   window.goToAuth = () => navigate('auth')
   window.goToSettings = () => alert('Settings coming in Phase 2!')
-  window.handleLogout = () => {
-    state.user = null
-    navigate('chat')
-  }
+  window.handleLogout = () => { state.user = null; navigate('chat') }
   window.loadChat = (i) => {
     const chat = state.chatHistory[i]
-    if (chat) {
-      state.currentChat = chat.messages || []
-      state.selectedModel = chat.model || state.selectedModel
-    }
+    if (chat) { state.currentChat = chat.messages || []; state.selectedModel = chat.model || state.selectedModel }
   }
 }
 
@@ -487,47 +445,41 @@ async function sendChatMessage() {
   const sendBtn = document.getElementById('send-btn')
   const messagesEl = document.getElementById('chat-messages')
 
-  // Clear welcome if first message
-  if (state.currentChat.length === 0) {
-    messagesEl.innerHTML = ''
-  }
+  if (state.currentChat.length === 0) messagesEl.innerHTML = ''
 
-  // Add user message
   state.currentChat.push({ role: 'user', content: text })
   addMessageToUI('user', text, '👤', 'You')
   ta.value = ''
   ta.style.height = 'auto'
   sendBtn.disabled = true
 
-  // Add loading
   const loadingId = addLoadingMessage()
 
-  // Build system prompt
-  const userInfo = state.user
-    ? `User: ${state.user.name}${state.userDetails ? `, born ${state.userDetails.dob} in ${state.userDetails.birthPlace}, Gender: ${state.userDetails.gender}` : ''}.`
-    : 'User details not provided yet.'
+  // Build chart context
+  let chartContext = ''
+  if (state.birthChart) {
+    chartContext = formatChartForAI(state.birthChart, state.selectedModel, state.selectedDomain, state.language) || ''
+  }
 
-  // Get chart data for AI
-const { formatChartForAI } = await import('../astro/engine.js')
-const chartContext = state.birthChart
-  ? formatChartForAI(state.birthChart, state.selectedModel, state.selectedDomain, state.language)
-  : `User: ${state.userDetails?.name || 'Unknown'}, DOB: ${state.userDetails?.dob || 'Unknown'}, Place: ${state.userDetails?.birthPlace || 'Unknown'}`
+  if (!chartContext) {
+    chartContext = `User: ${state.userDetails?.name || 'Unknown'}, DOB: ${state.userDetails?.dob || 'Unknown'}, Place: ${state.userDetails?.birthPlace || 'Unknown'}, Gender: ${state.userDetails?.gender || 'Unknown'}`
+  }
 
-const systemPrompt = `You are an expert ${state.selectedModel.name} advisor with 30 years of experience.
+  const systemPrompt = `You are an expert ${state.selectedModel.name} advisor with 30 years of experience.
 
 ${chartContext}
 
 INSTRUCTIONS:
-- Analyze the birth chart data provided above
+- Analyze the birth chart data provided above carefully
 - Focus specifically on ${state.selectedDomain.name} (${state.selectedDomain.house})
-- Give specific planetary references from the actual chart
-- Mention exact planets, houses, dashas from the data above
-- Give practical actionable guidance
-- Suggest remedies if afflictions are found
-- ${state.language === 'hi' ? 'Respond in Hindi (Devanagari script).' : 'Respond in English.'}
+- Reference specific planets, houses and dashas from the chart data
+- Give practical, actionable guidance — not vague predictions
+- Suggest specific remedies if any afflictions are found
+- ${state.language === 'hi' ? 'Respond ONLY in Hindi using Devanagari script.' : 'Respond in English.'}
 - Speak warmly like a trusted family astrologer
-- End with one specific actionable advice`
-try {
+- End with one specific actionable advice or remedy`
+
+  try {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -537,7 +489,7 @@ try {
         'X-Title': 'Blessed Astro'
       },
       body: JSON.stringify({
-       model: 'openrouter/auto',
+        model: 'openrouter/auto',
         messages: [
           { role: 'system', content: systemPrompt },
           ...state.currentChat.map(m => ({
@@ -545,24 +497,22 @@ try {
             content: m.content
           }))
         ],
-        max_tokens: 600,
+        max_tokens: 700,
         temperature: 0.75
       })
     })
 
     const data = await response.json()
-    console.log('API Response:', JSON.stringify(data))
 
     if (!response.ok) {
       throw new Error(`API Error ${response.status}: ${data.error?.message || JSON.stringify(data)}`)
     }
 
     if (!data.choices || data.choices.length === 0) {
-      throw new Error('No choices in response: ' + JSON.stringify(data))
+      throw new Error('No response from AI')
     }
 
     const aiText = data.choices[0].message.content
-
     removeLoadingMessage(loadingId)
     state.currentChat.push({ role: 'ai', content: aiText })
     addMessageToUI('ai', aiText, state.selectedModel.icon, state.selectedModel.name + ' Advisor')
@@ -578,12 +528,12 @@ try {
 
   } catch (err) {
     removeLoadingMessage(loadingId)
-    console.error('Chat error full:', err.message)
-    addMessageToUI('ai', '⚠️ Debug: ' + err.message, state.selectedModel.icon, state.selectedModel.name + ' Advisor')
+    console.error('Chat error:', err.message)
+    addMessageToUI('ai', 'The cosmic connection was interrupted. Please try again. (' + err.message + ')', state.selectedModel.icon, state.selectedModel.name + ' Advisor')
+  } finally {
+    sendBtn.disabled = false
+    scrollToBottom()
   }
-
-  sendBtn.disabled = false
-  scrollToBottom()
 }
 
 // ── UI HELPERS ─────────────────────────────────────────
@@ -613,11 +563,7 @@ function addLoadingMessage() {
     <div class="msg-avatar">${state.selectedModel.icon}</div>
     <div class="msg-content">
       <div class="msg-name">${state.selectedModel.name} Advisor</div>
-      <div class="msg-bubble">
-        <div class="loading-dots">
-          <span></span><span></span><span></span>
-        </div>
-      </div>
+      <div class="msg-bubble"><div class="loading-dots"><span></span><span></span><span></span></div></div>
     </div>
   `
   messagesEl.appendChild(div)
@@ -637,12 +583,11 @@ function scrollToBottom() {
 // ── CRYSTAL BALL USER DETAILS ──────────────────────────
 function checkUserDetails(state) {
   if (!state.userDetails && state.currentChat.length === 0) {
-    // Show crystal ball after short delay on first visit
     setTimeout(() => showCrystalBall(), 500)
   }
 }
 
-window.showCrystalBall = function() {
+window.showCrystalBall = function () {
   const overlay = document.createElement('div')
   overlay.id = 'crystal-overlay'
   overlay.className = 'crystal-screen'
@@ -683,7 +628,7 @@ window.showCrystalBall = function() {
         <label class="form-label">Current City</label>
         <input type="text" id="cd-city" class="form-input" placeholder="Where you live now" />
       </div>
-      <button class="btn-primary" style="width:100%;justify-content:center;margin-top:8px;" onclick="saveCrystalDetails()">
+      <button class="btn-primary" style="width:100%;justify-content:center;margin-top:8px;" id="begin-btn" onclick="saveCrystalDetails()">
         ✨ Begin My Journey
       </button>
       <button class="btn-ghost" style="width:100%;text-align:center;margin-top:8px;" onclick="skipCrystalBall()">
@@ -713,41 +658,47 @@ window.showCrystalBall = function() {
     }
 
     const userDetails = {
-  name,
-  gender: selectedGender,
-  dob,
-  tob: document.getElementById('cd-tob').value,
-  birthPlace: place,
-  currentCity: document.getElementById('cd-city').value.trim()
-}
+      name,
+      gender: selectedGender,
+      dob,
+      tob: document.getElementById('cd-tob').value,
+      birthPlace: place,
+      currentCity: document.getElementById('cd-city').value.trim()
+    }
 
-state.userDetails = userDetails
+    state.userDetails = userDetails
 
-// Calculate full chart
-const btn = document.querySelector('[onclick="saveCrystalDetails()"]')
-if (btn) btn.textContent = '⏳ Calculating your chart...'
+    // Show calculating state
+    const beginBtn = document.getElementById('begin-btn')
+    if (beginBtn) {
+      beginBtn.textContent = '⏳ Reading the stars...'
+      beginBtn.disabled = true
+    }
 
-try {
-  const { calculateFullChart } = await import('../astro/engine.js')
-  const result = await calculateFullChart(userDetails)
-  if (result.success) {
-    state.birthChart = result.chart
-    console.log('Chart calculated:', result.chart.vedic.lagna.sign)
-  }
-} catch(e) {
-  console.error('Chart error:', e)
-}
+    // Calculate birth chart
+    try {
+      const { calculateFullChart } = await import('../astro/engine.js')
+      const result = await calculateFullChart(userDetails)
+      if (result.success) {
+        state.birthChart = result.chart
+        console.log('✅ Chart calculated:', result.chart.vedic.lagna.sign, result.chart.vedic.lagna.degree.toFixed(2))
+      } else {
+        console.warn('Chart calculation failed:', result.error)
+      }
+    } catch (e) {
+      console.error('Chart import error:', e)
+    }
 
+    // Set user
     if (!state.user) {
       state.user = { name, plan: 'Free' }
     }
 
-    // Animate close
+    // Close overlay
     overlay.style.transition = 'opacity 0.5s ease'
     overlay.style.opacity = '0'
     setTimeout(() => {
       overlay.remove()
-      // Refresh sidebar with user name
       navigate('chat')
     }, 500)
   }

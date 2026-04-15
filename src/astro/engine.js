@@ -123,25 +123,83 @@ export function getTimezoneOffset(timezone) {
 
 export function getJulianDay(dateStr, timeStr, timezoneOffset) {
   const [year, month, day] = dateStr.split('-').map(Number)
-  const [hour, minute] = (timeStr || '12:00').split(':').map(Number)
-  const utcHour = hour + minute / 60 - timezoneOffset
-  return swe.swe_julday(year, month, day, utcHour, swe.SE_GREG_CAL)
-}
+  const timeParts = (timeStr || '12:00').split(':').map(Number)
+  const hour = timeParts[0] || 12
+  const minute = timeParts[1] || 0
+  const second = timeParts[2] || 0
 
+  // Exact UTC conversion including seconds
+  const localHour = hour + minute / 60 + second / 3600
+  const utcHour = localHour - timezoneOffset
+
+  // Handle day rollover
+  let adjustedDay = day
+  let adjustedMonth = month
+  let adjustedYear = year
+  let adjustedHour = utcHour
+
+  if (adjustedHour < 0) {
+    adjustedHour += 24
+    adjustedDay -= 1
+    if (adjustedDay < 1) {
+      adjustedMonth -= 1
+      if (adjustedMonth < 1) {
+        adjustedMonth = 12
+        adjustedYear -= 1
+      }
+      const daysInMonth = new Date(adjustedYear, adjustedMonth, 0).getDate()
+      adjustedDay = daysInMonth
+    }
+  } else if (adjustedHour >= 24) {
+    adjustedHour -= 24
+    adjustedDay += 1
+  }
+
+  console.log(`Julian Day calc: ${adjustedYear}-${adjustedMonth}-${adjustedDay} ${adjustedHour.toFixed(4)} UTC`)
+  return swe.swe_julday(adjustedYear, adjustedMonth, adjustedDay, adjustedHour, swe.SE_GREG_CAL)
+}
 export async function getCoordinates(placeName) {
   try {
+    // Get coordinates from Nominatim
     const response = await fetch(
       `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(placeName)}&format=json&limit=1`,
       { headers: { 'User-Agent': 'BlessedAstro/1.0' } }
     )
     const data = await response.json()
+
     if (data && data[0]) {
       const lat = parseFloat(data[0].lat)
       const lng = parseFloat(data[0].lon)
-      const tzOffset = Math.round(lng / 15) === 5 ? 5.5 : Math.round(lng / 15)
-      return { lat, lng, timezoneOffset: tzOffset }
+
+      // Get exact timezone using geo-tz
+      let timezoneOffset = 5.5 // default IST
+      try {
+        const { find } = await import('geo-tz')
+        const timezones = find(lat, lng)
+        if (timezones && timezones[0]) {
+          // Get current UTC offset for this timezone
+          const tz = timezones[0]
+          const now = new Date()
+          const utcDate = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }))
+          const tzDate = new Date(now.toLocaleString('en-US', { timeZone: tz }))
+          timezoneOffset = (tzDate - utcDate) / (1000 * 60 * 60)
+          console.log(`Timezone: ${tz}, Offset: ${timezoneOffset}`)
+        }
+      } catch(tzError) {
+        // Fallback to longitude-based estimate
+        timezoneOffset = Math.round(lng / 15 * 2) / 2
+        // Special case for India
+        if (lng >= 68 && lng <= 97) timezoneOffset = 5.5
+        console.log('geo-tz fallback, offset:', timezoneOffset)
+      }
+
+      return { lat, lng, timezoneOffset }
     }
-  } catch(e) {}
+  } catch(e) {
+    console.error('Geocoding error:', e)
+  }
+
+  // Default Mumbai
   return { lat: 19.0760, lng: 72.8777, timezoneOffset: 5.5 }
 }
 
