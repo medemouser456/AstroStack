@@ -479,12 +479,25 @@ INSTRUCTIONS:
 - Speak warmly like a trusted family astrologer
 - End with one specific actionable advice or remedy`
 
+  const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY
+  if (!apiKey) {
+    removeLoadingMessage(loadingId)
+    sendBtn.disabled = false
+    addMessageToUI(
+      'ai',
+      'AI chat is unavailable because the OpenRouter API key is not configured. Please add VITE_OPENROUTER_API_KEY to your .env file and restart the app.',
+      state.selectedModel.icon,
+      state.selectedModel.name + ' Advisor'
+    )
+    return
+  }
+
   try {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'HTTP-Referer': 'https://blessedastro.com',
         'X-Title': 'Blessed Astro'
       },
