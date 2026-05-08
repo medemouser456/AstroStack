@@ -1,4 +1,5 @@
 import { navigate, state } from '../main.js'
+import { renderChartPanel } from '../charts/chartPanel.js'
 
 // ── DATA ───────────────────────────────────────────────
 const models = [
@@ -229,6 +230,12 @@ export function renderChat(app, state) {
           </div>
         </div>
       </div>
+
+      <div class="chart-panel-wrapper" id="chart-panel-wrapper">
+        <div id="chart-panel-container" class="chart-panel-container">
+          ${renderChartPanel(state)}
+        </div>
+      </div>
     </div>
 
     <div class="bottom-bar" id="bottom-bar">
@@ -380,6 +387,9 @@ function initChatHandlers(state) {
       })
       const ta = document.getElementById('chat-textarea')
       if (ta) ta.placeholder = `Ask ${model.name} about ${state.selectedDomain.name}...`
+      
+      // Update chart panel when model changes
+      updateChartPanel(state)
     }
   }
 
@@ -433,6 +443,21 @@ function initChatHandlers(state) {
   window.loadChat = (i) => {
     const chat = state.chatHistory[i]
     if (chat) { state.currentChat = chat.messages || []; state.selectedModel = chat.model || state.selectedModel }
+  }
+}
+
+// ── UPDATE CHART PANEL ─────────────────────────────────
+function updateChartPanel(state) {
+  const container = document.getElementById('chart-panel-container')
+  if (container) {
+    container.innerHTML = renderChartPanel(state)
+  }
+}
+
+window.toggleChartPanel = () => {
+  const wrapper = document.getElementById('chart-panel-wrapper')
+  if (wrapper) {
+    wrapper.style.display = wrapper.style.display === 'none' ? 'block' : 'none'
   }
 }
 

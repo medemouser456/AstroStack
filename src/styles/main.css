@@ -453,10 +453,307 @@ h1, h2, h3 {
   height: 100%;
   transition: margin-left 0.3s ease;
   overflow: hidden;
+  width: 50%;
 }
 
-.chat-main.full-width {
-  margin-left: 0;
+.chat-panel-wrapper {
+  width: 50%;
+  background: linear-gradient(135deg, #0a0a14 0%, #1a0a2e 100%);
+  border-left: 1px solid rgba(255, 102, 0, 0.1);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #ffa500 rgba(255, 102, 0, 0.1);
+}
+
+.chart-panel-wrapper::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chart-panel-wrapper::-webkit-scrollbar-track {
+  background: rgba(255, 102, 0, 0.05);
+}
+
+.chart-panel-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(255, 102, 0, 0.3);
+  border-radius: 4px;
+}
+
+.chart-panel-container {
+  padding: 20px;
+  height: 100%;
+}
+
+.chart-panel {
+  background: rgba(255, 102, 0, 0.03);
+  border: 1px solid rgba(255, 102, 0, 0.1);
+  border-radius: 12px;
+  padding: 16px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-panel-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  color: #999;
+  font-size: 14px;
+}
+
+.chart-message {
+  text-align: center;
+  padding: 32px;
+  font-style: italic;
+}
+
+.chart-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 102, 0, 0.1);
+}
+
+.chart-panel-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px;
+  color: #ffa500;
+  font-weight: 600;
+}
+
+.chart-panel-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.chart-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 102, 0, 0.3);
+  color: #ffa500;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.chart-btn:hover {
+  background: rgba(255, 102, 0, 0.1);
+  border-color: rgba(255, 102, 0, 0.6);
+}
+
+.chart-panel-content {
+  flex: 1;
+  overflow-y: auto;
+  font-size: 12px;
+}
+
+/* ── CHART STYLES ──────────────────────────────────── */
+.vedic-chart,
+.kp-chart,
+.western-chart,
+.bns-chart {
+  max-width: 100%;
+  height: auto;
+  margin-bottom: 12px;
+}
+
+.chart-summary {
+  background: rgba(26, 26, 46, 0.5);
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 12px;
+  font-size: 11px;
+  color: #cccccc;
+  border-left: 3px solid #ffa500;
+}
+
+.chart-title {
+  font-weight: 600;
+  color: #ffa500;
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.chart-info {
+  line-height: 1.6;
+}
+
+.chart-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.chart-tab {
+  flex: 1;
+  background: transparent;
+  border: 1px solid rgba(255, 102, 0, 0.3);
+  color: #ffa500;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  transition: all 0.2s ease;
+}
+
+.chart-tab.active {
+  background: rgba(255, 102, 0, 0.15);
+  border-color: #ffa500;
+}
+
+/* ── NUMEROLOGY LO SHU ─────────────────────────────── */
+.loshu-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.loshu-cell {
+  aspect-ratio: 1;
+  background: rgba(26, 26, 46, 0.5);
+  border: 1px solid rgba(255, 102, 0, 0.2);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  font-size: 11px;
+}
+
+.loshu-cell.loshu-strong {
+  background: rgba(255, 102, 0, 0.1);
+  border-color: rgba(255, 102, 0, 0.4);
+  color: #ffa500;
+}
+
+.loshu-cell.loshu-empty {
+  background: rgba(139, 0, 0, 0.08);
+  border-color: rgba(139, 0, 0, 0.2);
+  color: #999;
+}
+
+.loshu-number {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.loshu-count {
+  font-size: 10px;
+}
+
+/* ── TAROT ─────────────────────────────────────────── */
+.tarot-spread {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.tarot-card {
+  aspect-ratio: 2/3;
+  background: linear-gradient(135deg, #1a0a2e 0%, #2d0a4e 100%);
+  border: 2px solid #ffa500;
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  font-size: 10px;
+}
+
+.tarot-card:hover {
+  transform: translateY(-4px);
+}
+
+.tarot-card-front {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+
+.tarot-card-label {
+  font-weight: 600;
+  color: #ffa500;
+  font-size: 11px;
+}
+
+.tarot-card-name {
+  font-weight: bold;
+  color: #fff;
+  font-size: 11px;
+}
+
+.tarot-card-arcana {
+  color: #999;
+  font-size: 9px;
+}
+
+.tarot-card-meaning {
+}
+
+.tarot-interpret-btn {
+  background: rgba(255, 102, 0, 0.2);
+  border: 1px solid #ffa500;
+  color: #ffa500;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 12px;
+  font-size: 11px;
+  transition: all 0.2s ease;
+}
+
+.tarot-interpret-btn:hover {
+  background: rgba(255, 102, 0, 0.3);
+}
+
+/* ── TABLE STYLES ──────────────────────────────────── */
+.kp-table,
+.prashna-table,
+.bns-table,
+.chinese-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 11px;
+}
+
+.kp-table th,
+.prashna-table th,
+.bns-table th,
+.chinese-table th {
+  padding: 8px;
+  text-align: left;
+  border: 1px solid rgba(255, 102, 0, 0.2);
+  color: #ffa500;
+}
+
+.kp-table td,
+.prashna-table td,
+.bns-table td,
+.chinese-table td {
+  padding: 8px;
+  border: 1px solid rgba(255, 102, 0, 0.1);
+  color: #cccccc;
+}
+
+.kp-table tr:hover,
+.prashna-table tr:hover,
+.bns-table tr:hover,
+.chinese-table tr:hover {
+  background: rgba(255, 102, 0, 0.05);
 }
 
 .chat-messages {
