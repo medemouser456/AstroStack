@@ -86,7 +86,7 @@ export function renderProfile(app) {
             <div style="margin-bottom:16px;">
               <div style="font-size:12px; color:var(--grey); text-transform:uppercase; letter-spacing:1px; margin-bottom:6px;">Place of Birth</div>
               <div style="font-size:16px; color:var(--cream); font-weight:600;">
-                ${state.userDetails?.place || '—'}
+                ${state.userDetails?.birthPlace || '—'}
               </div>
             </div>
 

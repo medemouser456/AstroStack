@@ -85,7 +85,16 @@ export function normalizeAngle(angle) {
   while (angle >= 360) angle -= 360
   return angle
 }
-
+  // Calculate Navamsha (D9)
+  let navamsha = null
+  if (chart.vedic) {
+    try {
+      navamsha = calculateNavamsha(chart.vedic)
+      console.log('✅ Navamsha calculated:', navamsha.lagna.sign)
+    } catch (e) {
+      console.warn('⚠️ Navamsha calculation failed:', e.message)
+    }
+  }
 export function getSign(longitude) {
   return SIGNS[Math.floor(normalizeAngle(longitude) / 30)]
 }
@@ -392,6 +401,7 @@ export async function calculateFullChart(userDetails) {
     
   } catch (error) {
     console.error('❌ Critical chart error:', error)
+    navamsha: navamsha,
     return { success: false, error: error.message }
   }
 }
