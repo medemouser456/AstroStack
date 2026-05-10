@@ -1,5 +1,5 @@
 import swe from 'swisseph'
-
+import { calculateNavamsha } from '../charts/vedic.js'
 // ── CONSTANTS ──────────────────────────────────────────
 export const AYANAMSHA = {
   LAHIRI: 1,
