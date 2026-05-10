@@ -3,6 +3,8 @@ import './styles/animations.css'
 import { renderMatrix, startMatrixBackground } from './pages/home.js'
 import { renderChat } from './pages/chat.js'
 import { renderAuth } from './pages/auth.js'
+import { renderUserDetails } from './pages/userdetails.js'
+import { renderProfile } from './pages/profile.js'
 import { renderAbout } from './pages/about.js'
 import { renderPricing } from './pages/pricing.js'
 import { renderTeam } from './pages/team.js'
@@ -21,6 +23,7 @@ export const state = {
   language: 'en',
   musicPlaying: false,
   userDetails: null,
+  birthChart: null,
 }
 
 export function navigate(page) {
@@ -80,43 +83,85 @@ function setupMusic() {
 
 function render() {
   const app = document.getElementById('app')
-  switch (state.currentPage) {
-    case 'chat':
-      renderChat(app, state)
-      startMatrixBackground()
-      break
-    case 'auth':
-      renderAuth(app, state)
-      break
-    case 'about':
-      renderAbout(app, state)
-      break
-    case 'pricing':
-      renderPricing(app, state)
-      break
-    case 'team':
-      renderTeam(app, state)
-      break
-    case 'business':
-      renderBusiness(app, state)
-      break
-    case 'blog':
-      renderBlog(app, state)
-      break
-    case 'models':
-      renderModels(app, state)
-      break
-    default:
-      renderChat(app, state)
-      startMatrixBackground()
+  
+  try {
+    console.log('🎨 Rendering page:', state.currentPage)
+    
+    switch (state.currentPage) {
+      case 'chat':
+        renderChat(app, state)
+        startMatrixBackground()
+        break
+      case 'auth':
+        renderAuth(app, state)
+        break
+      case 'userdetails':
+        renderUserDetails(app)
+        break
+      case 'profile':
+        renderProfile(app)
+        break
+      case 'about':
+        renderAbout(app, state)
+        break
+      case 'pricing':
+        renderPricing(app, state)
+        break
+      case 'team':
+        renderTeam(app, state)
+        break
+      case 'business':
+        renderBusiness(app, state)
+        break
+      case 'blog':
+        renderBlog(app, state)
+        break
+      case 'models':
+        renderModels(app, state)
+        break
+      default:
+        renderChat(app, state)
+        startMatrixBackground()
+    }
+    
+    console.log('✅ Page rendered:', state.currentPage)
+  } catch (error) {
+    console.error('❌ RENDER ERROR:', error.message, error.stack)
+    app.innerHTML = `
+      <div style="color:red; padding:40px; font-family:monospace; font-size:14px;">
+        <h2>⚠️ Application Error</h2>
+        <p><strong>Error:</strong> ${error.message}</p>
+        <p><strong>Stack:</strong></p>
+        <pre style="background:#000; color:#0f0; padding:10px; overflow:auto; max-height:300px;">${error.stack}</pre>
+        <button onclick="location.reload()" style="padding:10px 20px; background:#666; color:white; border:none; cursor:pointer; border-radius:4px;">Reload Page</button>
+      </div>
+    `
   }
 }
 
 function init() {
-  setupMusic()
-  renderMatrix(() => {
-    render()
-  })
+  try {
+    console.log('🚀 AstroStack initializing...')
+    setupMusic()
+    renderMatrix(() => {
+      console.log('🎬 Matrix background loaded')
+      render()
+    })
+    console.log('✅ Init complete')
+  } catch (error) {
+    console.error('❌ INIT ERROR:', error.message, error.stack)
+    const app = document.getElementById('app')
+    if (app) {
+      app.innerHTML = `
+        <div style="color:red; padding:40px; font-family:monospace; font-size:14px;">
+          <h2>❌ Initialization Failed</h2>
+          <p><strong>Error:</strong> ${error.message}</p>
+          <p><strong>Stack:</strong></p>
+          <pre style="background:#000; color:#0f0; padding:10px; overflow:auto; max-height:300px;">${error.stack}</pre>
+        </div>
+      `
+    }
+  }
 }
 
 init()

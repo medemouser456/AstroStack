@@ -1,5 +1,6 @@
 import { navigate, state } from '../main.js'
 import { renderChartPanel } from '../charts/chartPanel.js'
+import { sendChatCompletion, buildSystemPrompt } from '../api/openrouter.js'
 
 // ── DATA ───────────────────────────────────────────────
 const models = [
@@ -31,65 +32,25 @@ const domains = [
   { icon: '☮️', name: 'Foreign & Moksha', house: '12th House', desc: 'Foreign travel, spirituality, liberation' },
 ]
 
-// ── FORMAT CHART FOR AI (inline — no import needed) ────
-function formatChartForAI(chart, model, domain, language) {
-  if (!chart || !chart.vedic) return null
-
-  const v = chart.vedic
-  const d = chart.dasha
-
-  const planetLines = Object.entries(v.planets).map(([_, p]) => {
-    const retro = p.isRetrograde ? ' (R)' : ''
-    const combust = p.isCombust ? ' (Combust)' : ''
-    return `  ${p.name}: ${p.sign} House ${p.house} | ${p.degree.toFixed(1)}° | ${p.nakshatra?.name || ''} Pada ${p.nakshatra?.pada || ''} | ${p.strength}${retro}${combust}`
-  }).join('\n')
-
-  const houseLines = Object.entries(v.houses).map(([num, h]) =>
-    `  House ${num}: ${h.sign} (Lord: ${h.lord})`
-  ).join('\n')
-
-  const yogaList = chart.yogas?.positive?.map(y => `  + ${y.name}: ${y.description}`).join('\n') || '  None detected'
-  const doshaList = chart.yogas?.doshas?.map(d => `  ! ${d.name}: ${d.description}`).join('\n') || '  None detected'
-
-  return `
-═══════════════════════════════════════
-BIRTH CHART (Swiss Ephemeris Calculated)
-═══════════════════════════════════════
-Name   : ${chart.name}
-DOB    : ${chart.dob}
-TOB    : ${chart.tob || 'Unknown'}
-Place  : ${chart.birthPlace}
-Gender : ${chart.gender}
-
-LAGNA: ${v.lagna.sign} ${v.lagna.degree.toFixed(2)}° | ${v.lagna.nakshatra?.name} Pada ${v.lagna.nakshatra?.pada} | Lord: ${v.lagna.lord}
-
-PLANETS:
-${planetLines}
-
-HOUSES:
-${houseLines}
-
-DASHA:
-  Mahadasha     : ${d?.mahadasha?.planet} (${d?.mahadasha?.start} to ${d?.mahadasha?.end})
-  Antardasha    : ${d?.antardasha?.planet} (${d?.antardasha?.start} to ${d?.antardasha?.end})
-  Pratyantardasha: ${d?.pratyantardasha?.planet || 'Calculating'}
-
-YOGAS: ${yogaList}
-DOSHAS: ${doshaList}
-
-NUMEROLOGY:
-  Life Path: ${chart.numerology?.lifePath} | Personal Year: ${chart.numerology?.personalYear}
-  Meaning: ${chart.numerology?.lifePathMeaning || ''}
-
-CHINESE: ${chart.chinese?.animalSign} (${chart.chinese?.element}) | 2026: ${chart.chinese?.currentYearImpact}
-
-QUERY: ${domain?.name} (${domain?.house}) | MODEL: ${model?.name}
-═══════════════════════════════════════`
-}
-
 // ── MAIN RENDER ────────────────────────────────────────
 export function renderChat(app, state) {
-  app.innerHTML = `
+  try {
+    console.log('📱 renderChat called with state:', { 
+      hasChart: !!state.birthChart,
+      hasBirthDetails: !!state.userDetails,
+      chatLength: state.currentChat.length,
+      selectedModel: state.selectedModel?.name
+    })
+    
+    if (state.birthChart) {
+      console.log('✅ Chart exists in state:', {
+        vedic: !!state.birthChart.vedic,
+        lagna: state.birthChart.vedic?.lagna,
+        planets: Object.keys(state.birthChart.vedic?.planets || {}).length
+      })
+    }
+    
+    const chatHTML = `
     <div class="cosmic-bg"></div>
     <canvas id="particle-canvas"></canvas>
 
@@ -104,7 +65,7 @@ export function renderChat(app, state) {
       <div class="navbar-right">
         <button class="lang-toggle" id="lang-btn">EN / हिं</button>
         ${state.user
-          ? `<div class="user-avatar" style="cursor:pointer;" title="${state.user.name}">${state.user.name[0].toUpperCase()}</div>`
+          ? `<div class="user-avatar" style="cursor:pointer; transition:all 0.2s;" title="${state.user.name}" onclick="navigate('profile')" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">${state.user.name[0].toUpperCase()}</div>`
           : `<button class="btn-primary" style="padding:8px 20px;font-size:13px;" onclick="goToAuth()">Login / Sign Up</button>`
         }
       </div>
@@ -151,7 +112,7 @@ export function renderChat(app, state) {
       </div>
 
       <div class="sidebar-bottom">
-        <button class="sidebar-item" onclick="goToSettings()">
+        <button class="sidebar-item" onclick="navigate('profile')">
           <span class="sidebar-item-icon">⚙️</span> Settings
         </button>
         ${state.user
@@ -242,14 +203,33 @@ export function renderChat(app, state) {
       <button class="bottom-bar-item active"><span class="icon">💬</span><span>Chat</span></button>
       <button class="bottom-bar-item" onclick="startNewChat()"><span class="icon">✦</span><span>New</span></button>
       <button class="bottom-bar-item"><span class="icon">📅</span><span>Calendar</span></button>
-      <button class="bottom-bar-item"><span class="icon">👤</span><span>Profile</span></button>
+      <button class="bottom-bar-item" onclick="navigate('profile')"><span class="icon">👤</span><span>Profile</span></button>
       <button class="bottom-bar-item" onclick="toggleSidebar()"><span class="icon">☰</span><span>Menu</span></button>
     </div>
   `
 
-  initParticles()
-  initChatHandlers(state)
-  checkUserDetails(state)
+    app.innerHTML = chatHTML
+    initParticles()
+    initChatHandlers(state)
+    checkUserDetails(state)
+    
+    // If chart exists, make sure it's displayed
+    if (state.birthChart) {
+      setTimeout(() => updateChartPanel(state), 100)
+    }
+  } catch (error) {
+    console.error('❌ renderChat error:', error.message, error.stack)
+    app.innerHTML = `
+      <div style="padding:40px; color:var(--red); font-family:monospace; background:var(--black); min-height:100vh; overflow:auto;">
+        <div style="color:var(--red); font-size:16px; font-weight:bold; margin-bottom:10px;">Error rendering chat:</div>
+        <div style="color:var(--grey-2); font-size:12px; white-space:pre-wrap; word-break:break-all;">
+${error.message}
+
+${error.stack}
+        </div>
+      </div>
+    `
+  }
 }
 
 // ── WELCOME SCREEN ─────────────────────────────────────
@@ -438,7 +418,6 @@ function initChatHandlers(state) {
   }
 
   window.goToAuth = () => navigate('auth')
-  window.goToSettings = () => alert('Settings coming in Phase 2!')
   window.handleLogout = () => { state.user = null; navigate('chat') }
   window.loadChat = (i) => {
     const chat = state.chatHistory[i]
@@ -449,9 +428,35 @@ function initChatHandlers(state) {
 // ── UPDATE CHART PANEL ─────────────────────────────────
 function updateChartPanel(state) {
   const container = document.getElementById('chart-panel-container')
-  if (container) {
-    container.innerHTML = renderChartPanel(state)
+  if (!container) {
+    console.error('❌ Chart panel container not found in DOM')
+    return
   }
+
+  const content = renderChartPanel(state)
+  if (!content) {
+    console.error('❌ renderChartPanel returned empty content')
+    container.innerHTML = '<div class="chart-error">Failed to render chart - empty content</div>'
+    return
+  }
+
+  container.innerHTML = content
+  console.log('✅ Chart panel DOM updated, content length:', content.length)
+  
+  // Verify SVG elements are in the DOM
+  setTimeout(() => {
+    const svgs = container.querySelectorAll('svg')
+    console.log('📊 SVG elements in chart panel:', svgs.length)
+    svgs.forEach((svg, i) => {
+      console.log(`  SVG ${i}:`, { 
+        class: svg.getAttribute('class'),
+        width: svg.getAttribute('width'),
+        height: svg.getAttribute('height'),
+        viewBox: svg.getAttribute('viewBox'),
+        children: svg.children.length
+      })
+    })
+  }, 100)
 }
 
 window.toggleChartPanel = () => {
@@ -459,6 +464,39 @@ window.toggleChartPanel = () => {
   if (wrapper) {
     wrapper.style.display = wrapper.style.display === 'none' ? 'block' : 'none'
   }
+}
+
+// ── CHART INTERACTION FUNCTIONS ────────────────────────
+window.switchVedicChart = async (event, chartType) => {
+  event.preventDefault()
+  
+  // Update tab active state
+  document.querySelectorAll('.chart-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent.includes(chartType === 'D1' ? 'D1' : 'D9'))
+  })
+  
+  // Re-render chart for the selected type
+  try {
+    const { renderVedicChart } = await import('../charts/vedic.js')
+    const chartContent = renderVedicChart(state.birthChart, chartType)
+    const container = document.getElementById('vedic-chart')
+    if (container) {
+      container.innerHTML = chartContent
+      console.log('✅ Switched to Vedic Chart:', chartType)
+    }
+  } catch (e) {
+    console.error('Error switching Vedic chart:', e)
+  }
+}
+
+window.exportChartPDF = (model) => {
+  alert(`PDF export for ${model} coming soon!`)
+  console.log('Export PDF:', model)
+}
+
+window.exportChartPNG = (model) => {
+  alert(`PNG export for ${model} coming soon!`)
+  console.log('Export PNG:', model)
 }
 
 // ── SEND MESSAGE ───────────────────────────────────────
@@ -480,81 +518,39 @@ async function sendChatMessage() {
 
   const loadingId = addLoadingMessage()
 
-  // Build chart context
-  let chartContext = ''
-  if (state.birthChart) {
-    chartContext = formatChartForAI(state.birthChart, state.selectedModel, state.selectedDomain, state.language) || ''
-  }
-
-  if (!chartContext) {
-    chartContext = `User: ${state.userDetails?.name || 'Unknown'}, DOB: ${state.userDetails?.dob || 'Unknown'}, Place: ${state.userDetails?.birthPlace || 'Unknown'}, Gender: ${state.userDetails?.gender || 'Unknown'}`
-  }
-
-  const systemPrompt = `You are an expert ${state.selectedModel.name} advisor with 30 years of experience.
-
-${chartContext}
-
-INSTRUCTIONS:
-- Analyze the birth chart data provided above carefully
-- Focus specifically on ${state.selectedDomain.name} (${state.selectedDomain.house})
-- Reference specific planets, houses and dashas from the chart data
-- Give practical, actionable guidance — not vague predictions
-- Suggest specific remedies if any afflictions are found
-- ${state.language === 'hi' ? 'Respond ONLY in Hindi using Devanagari script.' : 'Respond in English.'}
-- Speak warmly like a trusted family astrologer
-- End with one specific actionable advice or remedy`
-
-  const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY
-  if (!apiKey) {
-    removeLoadingMessage(loadingId)
-    sendBtn.disabled = false
-    addMessageToUI(
-      'ai',
-      'AI chat is unavailable because the OpenRouter API key is not configured. Please add VITE_OPENROUTER_API_KEY to your .env file and restart the app.',
-      state.selectedModel.icon,
-      state.selectedModel.name + ' Advisor'
-    )
-    return
-  }
-
   try {
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://blessedastro.com',
-        'X-Title': 'Blessed Astro'
-      },
-      body: JSON.stringify({
-        model: 'openrouter/auto',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...state.currentChat.map(m => ({
-            role: m.role === 'ai' ? 'assistant' : 'user',
-            content: m.content
-          }))
-        ],
-        max_tokens: 700,
-        temperature: 0.75
-      })
+    // Build system prompt with chart context
+    const systemPrompt = buildSystemPrompt(
+      state.birthChart,
+      state.selectedModel,
+      state.selectedDomain,
+      state.userDetails,
+      state.language
+    )
+
+    // Prepare messages for API
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...state.currentChat.map(m => ({
+        role: m.role === 'ai' ? 'assistant' : 'user',
+        content: m.content
+      }))
+    ]
+
+    // Send to OpenRouter API
+    const aiText = await sendChatCompletion(messages, {
+      model: 'openrouter/auto',
+      maxTokens: 700,
+      temperature: 0.75
     })
 
-    const data = await response.json()
-
-    if (!response.ok) {
-      throw new Error(`API Error ${response.status}: ${data.error?.message || JSON.stringify(data)}`)
-    }
-
-    if (!data.choices || data.choices.length === 0) {
-      throw new Error('No response from AI')
-    }
-
-    const aiText = data.choices[0].message.content
     removeLoadingMessage(loadingId)
+    sendBtn.disabled = false
+
     state.currentChat.push({ role: 'ai', content: aiText })
     addMessageToUI('ai', aiText, state.selectedModel.icon, state.selectedModel.name + ' Advisor')
 
+    // Add to chat history
     if (state.currentChat.length === 2) {
       state.chatHistory.unshift({
         title: text.slice(0, 40) + (text.length > 40 ? '...' : ''),
@@ -566,6 +562,7 @@ INSTRUCTIONS:
 
   } catch (err) {
     removeLoadingMessage(loadingId)
+    sendBtn.disabled = false
     console.error('Chat error:', err.message)
     addMessageToUI('ai', 'The cosmic connection was interrupted. Please try again. (' + err.message + ')', state.selectedModel.icon, state.selectedModel.name + ' Advisor')
   } finally {
@@ -620,7 +617,8 @@ function scrollToBottom() {
 
 // ── CRYSTAL BALL USER DETAILS ──────────────────────────
 function checkUserDetails(state) {
-  if (!state.userDetails && state.currentChat.length === 0) {
+  // Only show crystal ball if no details AND no chart AND empty chat
+  if (!state.userDetails && !state.birthChart && state.currentChat.length === 0) {
     setTimeout(() => showCrystalBall(), 500)
   }
 }

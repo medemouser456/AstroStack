@@ -9,7 +9,20 @@ import { renderWesternChart } from './western.js'
 import { renderBNSJupiterChart } from './bns.js'
 
 export function renderChartPanel(state) {
+  console.log('🔍 renderChartPanel called', { 
+    hasChart: !!state.birthChart, 
+    model: state.selectedModel?.name,
+    chartStructure: state.birthChart ? {
+      hasVedic: !!state.birthChart.vedic,
+      hasWestern: !!state.birthChart.western,
+      hasKP: !!state.birthChart.kp,
+      hasNumerology: !!state.birthChart.numerology,
+      hasChinese: !!state.birthChart.chinese
+    } : 'NO_CHART'
+  })
+
   if (!state.birthChart) {
+    console.warn('⚠️ No birth chart in state')
     return `
       <div class="chart-panel chart-panel-empty">
         <div class="chart-message">
@@ -23,34 +36,50 @@ export function renderChartPanel(state) {
   const model = state.selectedModel?.name || 'Vedic Astrology'
 
   let chartContent = ''
+  let renderError = null
 
-  switch (model) {
-    case 'Vedic Astrology':
-      chartContent = renderD9Tabs(chart)
-      break
-    case 'KP Astrology':
-      chartContent = renderKPChart(chart)
-      break
-    case 'Numerology':
-      chartContent = renderLoShuGrid(chart)
-      break
-    case 'Chinese Astrology':
-      chartContent = renderChineseSnapshot(chart)
-      break
-    case 'Tarot':
-      chartContent = renderTarotSpread(chart)
-      break
-    case 'Prashna / Horary':
-      chartContent = renderPrashnaLSRD(chart)
-      break
-    case 'Western Astrology':
-      chartContent = renderWesternChart(chart)
-      break
-    case 'BNS — Brighu Nadi':
-      chartContent = renderBNSJupiterChart(chart)
-      break
-    default:
-      chartContent = renderD9Tabs(chart)
+  try {
+    console.log('🎨 Attempting to render:', model)
+    switch (model) {
+      case 'Vedic Astrology':
+        chartContent = renderD9Tabs(chart)
+        break
+      case 'KP Astrology':
+        chartContent = renderKPChart(chart)
+        break
+      case 'Numerology':
+        chartContent = renderLoShuGrid(chart)
+        break
+      case 'Chinese Astrology':
+        chartContent = renderChineseSnapshot(chart)
+        break
+      case 'Tarot':
+        chartContent = renderTarotSpread(chart)
+        break
+      case 'Prashna / Horary':
+        chartContent = renderPrashnaLSRD(chart)
+        break
+      case 'Western Astrology':
+        chartContent = renderWesternChart(chart)
+        break
+      case 'BNS — Brighu Nadi':
+        chartContent = renderBNSJupiterChart(chart)
+        break
+      default:
+        console.log('🔄 Using default Vedic Astrology')
+        chartContent = renderD9Tabs(chart)
+    }
+    
+    console.log('✅ Chart rendered successfully for:', model, 'Content length:', chartContent?.length || 0)
+  } catch (error) {
+    console.error('❌ Chart rendering error:', error.message, error)
+    renderError = error.message
+    chartContent = `<div class="chart-error">Error rendering chart: ${error.message}</div>`
+  }
+
+  if (!chartContent) {
+    console.warn('⚠️ Chart rendering returned empty content')
+    chartContent = `<div class="chart-error">Chart rendering produced no output</div>`
   }
 
   return `
@@ -65,6 +94,7 @@ export function renderChartPanel(state) {
       </div>
       <div class="chart-panel-content">
         ${chartContent}
+        ${renderError ? `<div style="color:#ff6666; margin-top:12px; padding:8px; background:#1a0a00; border-radius:4px; font-size:11px;">Error: ${renderError}</div>` : ''}
       </div>
     </div>
   `

@@ -275,50 +275,123 @@ LANGUAGE     : ${language === 'hi' ? 'Hindi' : 'English'}
 // ── MAIN CALCULATION FUNCTION ──────────────────────────
 export async function calculateFullChart(userDetails) {
   const { name, dob, tob, birthPlace, gender } = userDetails
+  console.log('🔮 Starting chart calculation for:', { name, dob, tob, birthPlace, gender })
+  
   try {
-    const { calculateVedicChart } = await import('./vedic.js')
-    const { calculateDasha } = await import('./dasha.js')
-    const { detectYogas } = await import('./yogas.js')
-    const { calculateNumerology } = await import('./numerology.js')
-    const { calculateChinese } = await import('./chinese.js')
-    const { calculateWestern } = await import('./western.js')
-    const { calculateKP } = await import('./kp.js')
-
     const coords = await getCoordinates(birthPlace)
+    console.log('✅ Got coordinates:', coords)
+    
     swe.swe_set_ephe_path('./node_modules/swisseph/ephe')
-
     const jd = getJulianDay(dob, tob, coords.timezoneOffset)
-    const vedicChart = calculateVedicChart(jd, coords.lat, coords.lng)
-    const dashaData = calculateDasha(vedicChart.planets.moon, dob)
-    const yogas = detectYogas(vedicChart)
-    const numerology = calculateNumerology(name, dob)
-    const chinese = calculateChinese(dob)
-    const western = calculateWestern(jd, coords.lat, coords.lng)
-    const kp = calculateKP(jd, coords.lat, coords.lng)
+    console.log('✅ Calculated Julian Day:', jd)
 
-    const todayJD = getJulianDay(
-      new Date().toISOString().split('T')[0],
-      '12:00', coords.timezoneOffset
-    )
-    const currentTransits = calculateVedicChart(todayJD, coords.lat, coords.lng)
+    // Calculate all chart systems
+    let vedicChart, dashaData, yogas, numerology, chinese, western, kp, currentTransits
+    let errors = {}
 
-    return {
-      success: true,
-      chart: {
-        name, dob, tob, birthPlace, gender, coords,
-        vedic: vedicChart,
-        dasha: dashaData,
-        yogas,
-        western,
-        kp,
-        numerology,
-        chinese,
-        currentTransits: currentTransits.planets,
-        calculatedAt: new Date().toISOString()
-      }
+    try {
+      const { calculateVedicChart } = await import('./vedic.js')
+      vedicChart = calculateVedicChart(jd, coords.lat, coords.lng)
+      console.log('✅ Vedic chart calculated')
+    } catch (e) {
+      console.error('❌ Vedic chart error:', e.message)
+      errors.vedic = e.message
+      vedicChart = { lagna: {}, planets: {}, houses: {} }
     }
+
+    try {
+      const { calculateDasha } = await import('./dasha.js')
+      dashaData = calculateDasha(vedicChart?.planets?.moon, dob)
+      console.log('✅ Dasha calculated')
+    } catch (e) {
+      console.error('❌ Dasha error:', e.message)
+      errors.dasha = e.message
+      dashaData = { mahadasha: {}, antardasha: {}, pratyantardasha: {} }
+    }
+
+    try {
+      const { detectYogas } = await import('./yogas.js')
+      yogas = detectYogas(vedicChart)
+      console.log('✅ Yogas detected')
+    } catch (e) {
+      console.error('❌ Yogas error:', e.message)
+      errors.yogas = e.message
+      yogas = { positive: [], doshas: [] }
+    }
+
+    try {
+      const { calculateNumerology } = await import('./numerology.js')
+      numerology = calculateNumerology(name, dob)
+      console.log('✅ Numerology calculated')
+    } catch (e) {
+      console.error('❌ Numerology error:', e.message)
+      errors.numerology = e.message
+      numerology = { lifePath: 1, personalYear: 1 }
+    }
+
+    try {
+      const { calculateChinese } = await import('./chinese.js')
+      chinese = calculateChinese(dob)
+      console.log('✅ Chinese astrology calculated')
+    } catch (e) {
+      console.error('❌ Chinese error:', e.message)
+      errors.chinese = e.message
+      chinese = { animalSign: 'Dragon' }
+    }
+
+    try {
+      const { calculateWestern } = await import('./western.js')
+      western = calculateWestern(jd, coords.lat, coords.lng)
+      console.log('✅ Western chart calculated')
+    } catch (e) {
+      console.error('❌ Western error:', e.message)
+      errors.western = e.message
+      western = { planets: {} }
+    }
+
+    try {
+      const { calculateKP } = await import('./kp.js')
+      kp = calculateKP(jd, coords.lat, coords.lng)
+      console.log('✅ KP chart calculated')
+    } catch (e) {
+      console.error('❌ KP error:', e.message)
+      errors.kp = e.message
+      kp = { cuspalSubLords: {} }
+    }
+
+    try {
+      const todayJD = getJulianDay(
+        new Date().toISOString().split('T')[0],
+        '12:00', coords.timezoneOffset
+      )
+      const { calculateVedicChart } = await import('./vedic.js')
+      currentTransits = calculateVedicChart(todayJD, coords.lat, coords.lng)
+      console.log('✅ Current transits calculated')
+    } catch (e) {
+      console.error('❌ Transits error:', e.message)
+      errors.transits = e.message
+      currentTransits = { planets: {} }
+    }
+
+    const finalChart = {
+      name, dob, tob, birthPlace, gender, coords,
+      vedic: vedicChart,
+      dasha: dashaData,
+      yogas,
+      western,
+      kp,
+      numerology,
+      chinese,
+      currentTransits: currentTransits.planets || {},
+      calculatedAt: new Date().toISOString(),
+      errors: Object.keys(errors).length > 0 ? errors : null
+    }
+
+    console.log('✅ Full chart calculated successfully', { errors: Object.keys(errors) })
+    return { success: true, chart: finalChart }
+    
   } catch (error) {
-    console.error('Chart error:', error)
+    console.error('❌ Critical chart error:', error)
     return { success: false, error: error.message }
   }
 }

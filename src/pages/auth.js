@@ -172,7 +172,7 @@ export function renderAuth(app) {
 
     // Demo login — Supabase integration comes in Phase 2
     state.user = { name: 'Seeker', email, plan: 'Free' }
-    navigate('chat')
+    navigate('userdetails')
   }
 
   window.handleSignup = () => {
@@ -194,13 +194,13 @@ export function renderAuth(app) {
 
     // Demo signup — Supabase integration comes in Phase 2
     state.user = { name, email, phone, plan: 'Free' }
-    navigate('chat')
+    navigate('userdetails')
   }
 
   window.handleGoogleLogin = () => {
     // Google OAuth — Supabase integration in Phase 2
     state.user = { name: 'Cosmic Seeker', email: 'user@gmail.com', plan: 'Free' }
-    navigate('chat')
+    navigate('userdetails')
   }
 
   window.goToChat = () => navigate('chat')
